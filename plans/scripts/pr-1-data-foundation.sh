@@ -14,11 +14,13 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 BRANCH_NAME="feature/shortcuts-v2-data-foundation"
 BASE_BRANCH="${1:-main}"
+SOURCE_BRANCH="feat/shortcuts-v2"
 
 echo "=========================================="
 echo "PR 1: Common Data Layer - Foundation"
 echo "Branch: $BRANCH_NAME"
 echo "Base: $BASE_BRANCH"
+echo "Source: $SOURCE_BRANCH"
 echo "=========================================="
 echo ""
 
@@ -46,18 +48,21 @@ fi
 echo "→ Creating branch $BRANCH_NAME..."
 git checkout -b "$BRANCH_NAME"
 
-# Stage files
-echo "→ Staging files..."
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/ShortcutsRepository.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/ShortcutFactory.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/ShortcutIntentCodec.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/di/ShortcutsRepositoryModule.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ShortcutDraft.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ShortcutResult.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ShortcutTargetValue.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/EditorData.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ServerData.kt
-git add common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ShortcutsListData.kt
+# Retrieve files from source branch
+echo "→ Retrieving files from $SOURCE_BRANCH..."
+git checkout "$SOURCE_BRANCH" -- \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/ShortcutsRepository.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/ShortcutFactory.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/ShortcutIntentCodec.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/di/ShortcutsRepositoryModule.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/ShortcutsRepositoryImpl.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/ShortcutIntentCodecImpl.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ShortcutDraft.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ShortcutResult.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ShortcutTargetValue.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/EditorData.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ServerData.kt \
+    common/src/main/kotlin/io/homeassistant/companion/android/common/data/shortcuts/impl/entities/ShortcutsListData.kt
 
 echo ""
 echo "→ Files staged:"
@@ -68,10 +73,10 @@ echo ""
 echo "→ Committing..."
 git commit -m "feat(shortcuts): add common data layer foundation
 
-Add core interfaces, entity models, and DI module for Shortcuts V2:
-- ShortcutsRepository interface
-- ShortcutFactory interface  
-- ShortcutIntentCodec interface
+Add core interfaces, implementations, entity models, and DI module for Shortcuts V2:
+- ShortcutsRepository interface and implementation
+- ShortcutFactory interface
+- ShortcutIntentCodec interface and implementation
 - Entity models (ShortcutDraft, ShortcutResult, etc.)
 - DI module for data layer
 
