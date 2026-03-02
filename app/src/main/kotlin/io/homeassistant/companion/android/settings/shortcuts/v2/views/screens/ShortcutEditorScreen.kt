@@ -28,6 +28,7 @@ import io.homeassistant.companion.android.settings.shortcuts.v2.views.components
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.components.EmptyStateNoServers
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.components.ErrorStateContent
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.components.HomeShortcutEditor
+import io.homeassistant.companion.android.settings.shortcuts.v2.views.components.HomeShortcutsNotSupportedStateContent
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.components.NotSupportedStateContent
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.preview.ShortcutPreviewData
 import io.homeassistant.companion.android.util.icondialog.IconDialog
@@ -43,8 +44,8 @@ internal fun ShortcutEditorScreen(
     onRetry: (() -> Unit),
 ) {
     val noServers = state.screen.servers.isEmpty()
-    val notSupported = state.screen.error == ShortcutError.ApiNotSupported ||
-        state.screen.error == ShortcutError.HomeShortcutNotSupported
+    val notSupported = state.screen.error == ShortcutError.ApiNotSupported
+    val homeShortcutsNotSupported = state.screen.error == ShortcutError.HomeShortcutNotSupported
     when (val editor = state.editor) {
         is ShortcutEditorUiState.EditorState.App -> {
             when {
@@ -74,6 +75,7 @@ internal fun ShortcutEditorScreen(
         is ShortcutEditorUiState.EditorState.Home -> {
             when {
                 notSupported -> NotSupportedStateContent()
+                homeShortcutsNotSupported -> HomeShortcutsNotSupportedStateContent()
                 noServers -> EmptyStateNoServers()
                 state.screen.error != null -> ErrorStateContent(onRetry = onRetry)
                 else -> {
@@ -173,7 +175,7 @@ private fun ShortcutEditorScreenAppPreview() {
                 editor = ShortcutPreviewData.buildAppEditorState(),
             ),
             dispatch = {},
-            onRetry = {}
+            onRetry = {},
         )
     }
 }
@@ -190,7 +192,7 @@ private fun ShortcutEditorScreenHomePreview() {
                 editor = ShortcutPreviewData.buildHomeEditorState(),
             ),
             dispatch = {},
-            onRetry = {}
+            onRetry = {},
         )
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -90,8 +91,9 @@ internal fun ShortcutsListScreen(
     val dismissCreateDialog: () -> Unit = { showCreateDialog = false }
     Scaffold(
         floatingActionButton = {
-            if (!state.isLoading && state.error != ShortcutError.ApiNotSupported) {
+            if (!state.isLoading && state.error == null) {
                 FloatingActionButton(
+                    shape = CircleShape,
                     modifier = Modifier.padding(safeBottomPaddingValues(applyHorizontal = false)),
                     containerColor = LocalHAColorScheme.current.colorFillPrimaryLoudResting,
                     contentColor = LocalHAColorScheme.current.colorOnPrimaryLoud,
@@ -421,7 +423,12 @@ private fun CreateShortcutDialog(
     val canCreateHomeShortcut = state.isHomeSupported
     MdcAlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text(stringResource(R.string.shortcut_v2_create_dialog_subtitle)) },
+        title = {
+            Text(
+                text = stringResource(R.string.shortcut_v2_create_dialog_subtitle),
+                color = LocalHAColorScheme.current.colorTextPrimary,
+            )
+        },
         content = {
             LazyColumn {
                 item {
@@ -494,6 +501,7 @@ private fun ShortcutTypeOptionRow(
                 text = description,
                 style = HATextStyle.BodyMedium,
                 color = secondaryTextColor,
+                textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

@@ -45,6 +45,15 @@ internal fun NotSupportedStateContent() {
     )
 }
 
+@Composable
+internal fun HomeShortcutsNotSupportedStateContent() {
+    EmptyState(
+        icon = CommunityMaterial.Icon.cmd_alert,
+        title = stringResource(R.string.failed_unsupported),
+        subtitle = stringResource(R.string.shortcut_pin_not_supported),
+    )
+}
+
 @Preview(name = "Empty State Content")
 @Composable
 private fun EmptyStateContentPreview() {

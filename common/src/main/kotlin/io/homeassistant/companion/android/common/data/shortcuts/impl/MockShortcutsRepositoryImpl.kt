@@ -319,7 +319,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
                     maxAppShortcuts = MOCK_MAX_APP_SHORTCUTS,
                     shortcuts = appShortcuts.toMap(),
                 ),
-                homeShortcuts = homeShortcuts.values.map { it.toSummary() },
+                homeShortcuts = homeShortcuts.values.map { it.toSummary() }.reversed(),
             ),
         )
     }

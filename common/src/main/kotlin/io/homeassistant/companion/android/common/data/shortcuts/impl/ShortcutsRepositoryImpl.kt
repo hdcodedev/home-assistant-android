@@ -423,6 +423,6 @@ class ShortcutsRepositoryImpl @Inject constructor(
     private fun loadHomeShortcutsInternal(defaultServerId: Int): List<ShortcutDraft> {
         val homeShortcuts = ShortcutManagerCompat.getShortcuts(app, ShortcutManagerCompat.FLAG_MATCH_PINNED)
             .filter { !it.id.startsWith(ASSIST_SHORTCUT_PREFIX) }
-        return homeShortcuts.map { it.toDraft(defaultServerId, iconIdToName) }
+        return homeShortcuts.map { it.toDraft(defaultServerId, iconIdToName) }.reversed()
     }
 }
