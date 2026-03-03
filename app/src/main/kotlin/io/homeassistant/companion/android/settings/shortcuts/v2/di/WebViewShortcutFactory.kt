@@ -23,7 +23,7 @@ internal class WebViewShortcutFactory @Inject constructor(
         val encodedPath = shortcutIntentCodec.encodeDestination(draft.destination)
         val serverId = requireNotNull(draft.serverId) { "ShortcutDraft.serverId must be resolved before creating shortcut info." }
         val intent = WebViewActivity.newInstance(app, encodedPath, serverId).apply {
-            action = Intent.ACTION_VIEW
+            action = encodedPath
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
@@ -31,8 +31,6 @@ internal class WebViewShortcutFactory @Inject constructor(
             )
             shortcutIntentCodec.applyShortcutExtras(
                 intent = this,
-                shortcutDestination = draft.destination,
-                path = encodedPath,
                 iconName = draft.selectedIconName,
             )
         }

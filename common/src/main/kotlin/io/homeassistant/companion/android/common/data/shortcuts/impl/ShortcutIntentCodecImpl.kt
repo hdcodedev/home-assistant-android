@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutType
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,12 +30,10 @@ internal class ShortcutIntentCodecImpl @Inject constructor() : ShortcutIntentCod
     }
 
     override fun parseDestination(extras: Bundle?, path: String): ShortcutDestination {
-        return when (parseShortcutType(extras, path)) {
-            ShortcutType.LOVELACE -> {
-                ShortcutDestination.Lovelace(path.takeUnless { it.startsWith(ENTITY_PREFIX) }.orEmpty())
-            }
-
-            ShortcutType.ENTITY_ID -> ShortcutDestination.Entity(path.removePrefix(ENTITY_PREFIX))
+        return if (path.startsWith(ENTITY_PREFIX)) {
+            ShortcutDestination.Entity(path.removePrefix(ENTITY_PREFIX))
+        } else {
+            ShortcutDestination.Lovelace(path)
         }
     }
 
@@ -47,20 +44,8 @@ internal class ShortcutIntentCodecImpl @Inject constructor() : ShortcutIntentCod
         }
     }
 
-    override fun applyShortcutExtras(intent: Intent, shortcutDestination: ShortcutDestination, path: String, iconName: String?) {
-        intent.putExtra(EXTRA_SHORTCUT_PATH, path)
+    override fun applyShortcutExtras(intent: Intent, iconName: String?) {
         iconName?.let { intent.putExtra(EXTRA_ICON_NAME, it) }
-        val type = when (shortcutDestination) {
-            is ShortcutDestination.Lovelace -> ShortcutType.LOVELACE
-            is ShortcutDestination.Entity -> ShortcutType.ENTITY_ID
-        }
-        intent.putExtra(EXTRA_TYPE, type.name)
-    }
-
-    private fun parseShortcutType(extras: Bundle?, path: String): ShortcutType {
-        val raw = extras?.getString(EXTRA_TYPE)
-        val fromExtra = raw?.let { ShortcutType.entries.firstOrNull { e -> e.name == it } }
-        return fromExtra ?: if (path.startsWith(ENTITY_PREFIX)) ShortcutType.ENTITY_ID else ShortcutType.LOVELACE
     }
 
     internal companion object {
@@ -68,7 +53,5 @@ internal class ShortcutIntentCodecImpl @Inject constructor() : ShortcutIntentCod
         private const val MDI_PREFIX = "mdi:"
         private const val EXTRA_ICON_ID = "iconId"
         private const val EXTRA_ICON_NAME = "iconName"
-        internal const val EXTRA_SHORTCUT_PATH = "shortcutPath"
-        private const val EXTRA_TYPE = "type"
     }
 }

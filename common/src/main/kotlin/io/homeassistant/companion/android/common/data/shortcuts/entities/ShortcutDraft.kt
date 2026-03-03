@@ -1,5 +1,6 @@
 package io.homeassistant.companion.android.common.data.shortcuts.entities
 
+import android.os.Bundle
 import androidx.compose.runtime.Immutable
 import androidx.core.content.pm.ShortcutInfoCompat
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
@@ -36,7 +37,12 @@ fun ShortcutDraft.toSummary(): ShortcutSummary {
 }
 
 private const val EXTRA_SERVER = "server"
-private const val EXTRA_SHORTCUT_PATH = "shortcutPath"
+private const val EXTRA_WEBVIEW_PATH = "path"
+
+internal fun resolveShortcutPath(extras: Bundle?, action: String?): String {
+    return extras?.getString(EXTRA_WEBVIEW_PATH).orEmpty()
+        .ifBlank { action.orEmpty() }
+}
 
 internal fun ShortcutInfoCompat.toDraft(
     defaultServerId: Int,
@@ -45,7 +51,7 @@ internal fun ShortcutInfoCompat.toDraft(
 ): ShortcutDraft {
     val extras = intent.extras
     val serverId = extras?.getInt(EXTRA_SERVER, defaultServerId) ?: defaultServerId
-    val path = extras?.getString(EXTRA_SHORTCUT_PATH) ?: intent.action.orEmpty()
+    val path = resolveShortcutPath(extras = extras, action = intent.action)
 
     val selectedIconName = shortcutIntentCodec.parseIcon(extras, iconIdToName)
     val destination = shortcutIntentCodec.parseDestination(extras, path)

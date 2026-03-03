@@ -8,5 +8,5 @@ interface ShortcutIntentCodec {
     fun parseIcon(extras: Bundle?, iconIdToName: Map<Int, String>): String?
     fun parseDestination(extras: Bundle?, path: String): ShortcutDestination
     fun encodeDestination(shortcutDestination: ShortcutDestination): String
-    fun applyShortcutExtras(intent: Intent, shortcutDestination: ShortcutDestination, path: String, iconName: String?)
+    fun applyShortcutExtras(intent: Intent, iconName: String?)
 }
