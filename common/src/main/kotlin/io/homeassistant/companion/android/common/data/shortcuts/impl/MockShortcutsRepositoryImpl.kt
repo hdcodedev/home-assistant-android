@@ -13,6 +13,7 @@ import io.homeassistant.companion.android.common.data.shortcuts.entities.Shortcu
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutsListData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerEditorItem
 import io.homeassistant.companion.android.common.data.shortcuts.entities.empty
 import io.homeassistant.companion.android.common.data.shortcuts.entities.toSummary
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.AreaRegistryResponse
@@ -327,8 +328,12 @@ internal class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepo
     override suspend fun loadEditorData(): ShortcutResult<ShortcutEditorData> {
         return ShortcutResult.Success(
             ShortcutEditorData(
-                servers = servers,
-                serverDataById = serverDataById,
+                items = servers.map { server ->
+                    ServerEditorItem(
+                        server = server,
+                        data = serverDataById[server.id] ?: ServerData(),
+                    )
+                },
             ),
         )
     }

@@ -25,10 +25,10 @@ internal fun ShortcutEditorData.toUi(): ShortcutEditorScreenState {
     return ShortcutEditorScreenState(
         isLoading = false,
         error = null,
-        servers = servers.toList(),
-        entities = serverDataById.mapValues { it.value.entities.toList() },
-        entityRegistry = serverDataById.mapValues { it.value.entityRegistry.toList() },
-        deviceRegistry = serverDataById.mapValues { it.value.deviceRegistry.toList() },
-        areaRegistry = serverDataById.mapValues { it.value.areaRegistry.toList() },
+        servers = items.map { it.server },
+        entities = items.associate { it.server.id to it.data.entities.toList() },
+        entityRegistry = items.associate { it.server.id to it.data.entityRegistry.toList() },
+        deviceRegistry = items.associate { it.server.id to it.data.deviceRegistry.toList() },
+        areaRegistry = items.associate { it.server.id to it.data.areaRegistry.toList() },
     )
 }

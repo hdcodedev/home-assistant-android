@@ -6,6 +6,7 @@ import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsReposit
 import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
 import io.homeassistant.companion.android.common.data.shortcuts.entities.HomeEditorData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerEditorItem
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutEditorData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
@@ -60,8 +61,12 @@ class HomeShortcutEditorViewModelTest {
     fun setup() {
         coEvery { shortcutsRepository.loadEditorData() } returns ShortcutResult.Success(
             ShortcutEditorData(
-                servers = listOf(server),
-                serverDataById = mapOf(server.id to ServerData()),
+                items = listOf(
+                    ServerEditorItem(
+                        server = server,
+                        data = ServerData(),
+                    ),
+                ),
             ),
         )
         coEvery { shortcutsRepository.loadHomeEditor(homeShortcutDraft.id) } returns ShortcutResult.Success(

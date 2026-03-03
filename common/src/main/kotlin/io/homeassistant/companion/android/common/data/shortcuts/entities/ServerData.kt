@@ -16,4 +16,12 @@ data class ServerData(
 )
 
 @Immutable
-data class ShortcutEditorData(val servers: List<Server>, val serverDataById: Map<Int, ServerData>)
+data class ServerEditorItem(
+    val server: Server,
+    val data: ServerData,
+)
+
+@Immutable
+data class ShortcutEditorData(
+    val items: List<ServerEditorItem>,
+)

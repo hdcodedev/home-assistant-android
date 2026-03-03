@@ -15,6 +15,8 @@ import io.homeassistant.companion.android.common.data.shortcuts.entities.Shortcu
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutsListData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerEditorItem
 import io.homeassistant.companion.android.common.data.shortcuts.entities.toSummary
 import io.homeassistant.companion.android.database.IconDialogCompat
 import javax.inject.Inject
@@ -104,8 +106,12 @@ internal class ShortcutsRepositoryImpl @Inject constructor(
 
         return ShortcutResult.Success(
             ShortcutEditorData(
-                servers = servers.servers,
-                serverDataById = dataById,
+                items = servers.servers.map { server ->
+                    ServerEditorItem(
+                        server = server,
+                        data = dataById[server.id] ?: ServerData(),
+                    )
+                },
             ),
         )
     }
