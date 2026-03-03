@@ -57,9 +57,9 @@ import io.homeassistant.companion.android.common.compose.theme.HARadius
 import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.compose.theme.LocalHAColorScheme
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutError
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutType
-import io.homeassistant.companion.android.settings.shortcuts.v2.AppShortcutItem
+import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutType
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutsListAction
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutsListState
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.components.EmptyStateContent
@@ -207,7 +207,7 @@ private fun ShortcutsList(state: ShortcutsListState, dispatch: (ShortcutsListAct
 
 @Composable
 private fun AppShortcutsLongPressPreview(
-    items: List<AppShortcutItem>,
+    items: List<AppShortcutSummary>,
     maxAppShortcuts: Int,
     onEditAppShortcut: (Int) -> Unit,
 ) {

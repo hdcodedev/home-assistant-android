@@ -1,11 +1,13 @@
 package io.homeassistant.companion.android.settings.shortcuts.v2.views.preview
 
 import io.homeassistant.companion.android.common.data.integration.Entity
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutError
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutSummary
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutTargetValue
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutType
+import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutType
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.AreaRegistryResponse
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.DeviceRegistryResponse
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.EntityRegistryResponse
@@ -13,7 +15,6 @@ import io.homeassistant.companion.android.database.server.Server
 import io.homeassistant.companion.android.database.server.ServerConnectionInfo
 import io.homeassistant.companion.android.database.server.ServerSessionInfo
 import io.homeassistant.companion.android.database.server.ServerUserInfo
-import io.homeassistant.companion.android.settings.shortcuts.v2.AppShortcutItem
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutEditorUiState
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutsListState
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.screens.ShortcutEditorScreenState
@@ -35,33 +36,22 @@ internal object ShortcutPreviewData {
         selectedIndex: Int = 0,
         draftSeed: ShortcutDraft = buildDraft(id = appDraftSeedId(selectedIndex)),
         isEditing: Boolean = true,
-    ): ShortcutEditorUiState.EditorState.App {
-        return if (isEditing) {
-            ShortcutEditorUiState.EditorState.AppEdit(
-                index = selectedIndex,
-                draftSeed = draftSeed,
-            )
-        } else {
-            ShortcutEditorUiState.EditorState.AppCreate(
-                index = selectedIndex,
-                draftSeed = draftSeed,
-            )
-        }
+    ): ShortcutEditorUiState.AppEditorState {
+        return ShortcutEditorUiState.AppEditorState(
+            mode = if (isEditing) EditorMode.EDIT else EditorMode.CREATE,
+            draftSeed = draftSeed,
+            appIndex = selectedIndex,
+        )
     }
 
     fun buildHomeEditorState(
         homeDraft: ShortcutDraft = buildHomeDraft(),
         isEditing: Boolean = true,
-    ): ShortcutEditorUiState.EditorState.Home {
-        return if (isEditing) {
-            ShortcutEditorUiState.EditorState.HomeEdit(
-                draftSeed = homeDraft,
-            )
-        } else {
-            ShortcutEditorUiState.EditorState.HomeCreate(
-                draftSeed = homeDraft,
-            )
-        }
+    ): ShortcutEditorUiState.HomeEditorState {
+        return ShortcutEditorUiState.HomeEditorState(
+            mode = if (isEditing) EditorMode.EDIT else EditorMode.CREATE,
+            draftSeed = homeDraft,
+        )
     }
 
     fun buildScreenState(
@@ -95,10 +85,10 @@ internal object ShortcutPreviewData {
             selectedIconName = null,
             label = if (type == ShortcutType.ENTITY_ID) "Lights" else "Shortcut",
             description = if (type == ShortcutType.ENTITY_ID) "Toggle living room lights" else "Description",
-            target = if (type == ShortcutType.ENTITY_ID) {
-                ShortcutTargetValue.Entity("light.living_room")
+            destination = if (type == ShortcutType.ENTITY_ID) {
+                ShortcutDestination.Entity("light.living_room")
             } else {
-                ShortcutTargetValue.Lovelace("/lovelace/shortcut")
+                ShortcutDestination.Lovelace("/lovelace/shortcut")
             },
         )
     }
@@ -116,10 +106,10 @@ internal object ShortcutPreviewData {
                 } else {
                     "Description $number"
                 },
-                target = if (type == ShortcutType.ENTITY_ID) {
-                    ShortcutTargetValue.Entity("light.living_room")
+                destination = if (type == ShortcutType.ENTITY_ID) {
+                    ShortcutDestination.Entity("light.living_room")
                 } else {
-                    ShortcutTargetValue.Lovelace("/lovelace/shortcut$number")
+                    ShortcutDestination.Lovelace("/lovelace/shortcut$number")
                 },
             )
         }
@@ -142,7 +132,7 @@ internal object ShortcutPreviewData {
             selectedIconName = null,
             label = "Home",
             description = "Home shortcut",
-            target = ShortcutTargetValue.Lovelace("/lovelace/home"),
+            destination = ShortcutDestination.Lovelace("/lovelace/home"),
         )
     }
 
@@ -168,7 +158,7 @@ internal object ShortcutPreviewData {
         isHomeSupported: Boolean = true,
     ): ShortcutsListState {
         val appItems = appSummaries.mapIndexed { index, summary ->
-            AppShortcutItem(index, summary)
+            AppShortcutSummary(index, summary)
         }
         val homeItems = if (isHomeSupported) homeSummaries else emptyList()
         return ShortcutsListState(

@@ -19,8 +19,7 @@ import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.compose.theme.LocalHAColorScheme
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutTargetValue
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutEditorUiState
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.preview.ShortcutPreviewData
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.screens.ShortcutEditorScreenState
@@ -29,7 +28,7 @@ import io.homeassistant.companion.android.settings.shortcuts.v2.views.selector.S
 @Composable
 internal fun AppShortcutEditor(
     draft: ShortcutDraft,
-    state: ShortcutEditorUiState.EditorState.App,
+    state: ShortcutEditorUiState.AppEditorState,
     screen: ShortcutEditorScreenState,
     onDraftChange: (ShortcutDraft) -> Unit,
     onIconClick: () -> Unit,
@@ -38,7 +37,7 @@ internal fun AppShortcutEditor(
 ) {
     val canSubmit by remember(draft, screen.servers) {
         derivedStateOf {
-            canSubmit(draft = draft, screen = screen, requireId = false)
+            isDraftValidForSubmit(draft = draft, screen = screen)
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE2)) {
@@ -48,7 +47,11 @@ internal fun AppShortcutEditor(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.shortcut_n, state.index + 1),
+                text = if (state.isEditing && state.appIndex != null) {
+                    stringResource(R.string.shortcut_n, state.appIndex + 1)
+                } else {
+                    stringResource(R.string.shortcut_v2_add_app_shortcut_title)
+                },
                 style = HATextStyle.HeadlineMedium,
                 color = LocalHAColorScheme.current.colorFillPrimaryLoudResting,
                 textAlign = TextAlign.Start,
@@ -67,25 +70,13 @@ internal fun AppShortcutEditor(
             descriptionText = stringResource(R.string.shortcut_v2_shortcut_description),
             screen = screen,
             onDraftChange = onDraftChange,
-            isEditing = state is ShortcutEditorUiState.EditorState.AppEdit,
+            isEditing = state.isEditing,
             canSubmit = canSubmit,
             isSaving = screen.isSaving,
             onSubmit = onSubmit,
             onDelete = onDelete,
         )
     }
-}
-
-internal fun canSubmit(draft: ShortcutDraft, screen: ShortcutEditorScreenState, requireId: Boolean): Boolean {
-    val hasValidTarget = when (val target = draft.target) {
-        is ShortcutTargetValue.Lovelace -> target.path.isNotBlank()
-        is ShortcutTargetValue.Entity -> target.entityId.isNotBlank()
-    }
-    return (!requireId || draft.id.isNotEmpty()) &&
-        draft.label.isNotEmpty() &&
-        draft.description.isNotEmpty() &&
-        hasValidTarget &&
-        screen.servers.any { it.id == draft.serverId }
 }
 
 @Preview(name = "App Shortcut Editor")

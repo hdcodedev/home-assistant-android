@@ -9,7 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.homeassistant.companion.android.R
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutFactory
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.settings.shortcuts.v2.util.ShortcutIconRenderer
 import io.homeassistant.companion.android.util.icondialog.getIconByMdiName
 import io.homeassistant.companion.android.webview.WebViewActivity
@@ -20,8 +20,9 @@ internal class WebViewShortcutFactory @Inject constructor(
     private val shortcutIntentCodec: ShortcutIntentCodec,
 ) : ShortcutFactory {
     override fun createShortcutInfo(draft: ShortcutDraft): ShortcutInfoCompat {
-        val encodedPath = shortcutIntentCodec.encodeTarget(draft.target)
-        val intent = WebViewActivity.newInstance(app, encodedPath, draft.serverId).apply {
+        val encodedPath = shortcutIntentCodec.encodeDestination(draft.destination)
+        val serverId = requireNotNull(draft.serverId) { "ShortcutDraft.serverId must be resolved before creating shortcut info." }
+        val intent = WebViewActivity.newInstance(app, encodedPath, serverId).apply {
             action = Intent.ACTION_VIEW
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -30,7 +31,7 @@ internal class WebViewShortcutFactory @Inject constructor(
             )
             shortcutIntentCodec.applyShortcutExtras(
                 intent = this,
-                target = draft.target,
+                shortcutDestination = draft.destination,
                 path = encodedPath,
                 iconName = draft.selectedIconName,
             )

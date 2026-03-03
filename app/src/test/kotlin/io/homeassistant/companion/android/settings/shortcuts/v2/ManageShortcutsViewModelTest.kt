@@ -1,13 +1,13 @@
 package io.homeassistant.companion.android.settings.shortcuts.v2
 
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsRepository
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.AppShortcutsData
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutError
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutResult
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutTargetValue
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutsListData
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.toSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutsListData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.toSummary
 import io.homeassistant.companion.android.database.server.Server
 import io.homeassistant.companion.android.database.server.ServerConnectionInfo
 import io.homeassistant.companion.android.database.server.ServerSessionInfo
@@ -45,12 +45,10 @@ class ManageShortcutsViewModelTest {
     fun setup() {
         stubList(
             ShortcutsListData(
-                appShortcuts = AppShortcutsData(
-                    maxAppShortcuts = 5,
-                    shortcuts = mapOf(
-                        0 to buildDraft(id = "shortcut_1", serverId = server.id),
-                        2 to buildDraft(id = "shortcut_3", serverId = server.id),
-                    ),
+                maxAppShortcuts = 5,
+                appShortcuts = listOf(
+                    appShortcutSummary(index = 0, id = "shortcut_1", serverId = server.id),
+                    appShortcutSummary(index = 2, id = "shortcut_3", serverId = server.id),
                 ),
                 homeShortcuts = listOf(buildDraft(id = "home_1", serverId = server.id).toSummary()),
             ),
@@ -84,10 +82,8 @@ class ManageShortcutsViewModelTest {
     fun `Given empty shortcuts when init then empty state shown`() = runTest {
         stubList(
             ShortcutsListData(
-                appShortcuts = AppShortcutsData(
-                    maxAppShortcuts = 5,
-                    shortcuts = emptyMap(),
-                ),
+                maxAppShortcuts = 5,
+                appShortcuts = emptyList(),
                 homeShortcuts = emptyList(),
             ),
         )
@@ -100,10 +96,8 @@ class ManageShortcutsViewModelTest {
     fun `Given home not supported when init then home support is false`() = runTest {
         stubList(
             ShortcutsListData(
-                appShortcuts = AppShortcutsData(
-                    maxAppShortcuts = 5,
-                    shortcuts = emptyMap(),
-                ),
+                maxAppShortcuts = 5,
+                appShortcuts = emptyList(),
                 homeShortcuts = emptyList(),
                 homeShortcutsError = ShortcutError.HomeShortcutNotSupported,
             ),
@@ -119,10 +113,8 @@ class ManageShortcutsViewModelTest {
     fun `Given home not supported but app has shortcuts when init then isEmpty is false`() = runTest {
         stubList(
             ShortcutsListData(
-                appShortcuts = AppShortcutsData(
-                    maxAppShortcuts = 5,
-                    shortcuts = mapOf(0 to buildDraft(id = "s1", serverId = server.id)),
-                ),
+                maxAppShortcuts = 5,
+                appShortcuts = listOf(appShortcutSummary(index = 0, id = "s1", serverId = server.id)),
                 homeShortcuts = emptyList(),
                 homeShortcutsError = ShortcutError.HomeShortcutNotSupported,
             ),
@@ -148,12 +140,10 @@ class ManageShortcutsViewModelTest {
     fun `Given app shortcuts with gaps when init then items have correct indexes`() = runTest {
         stubList(
             ShortcutsListData(
-                appShortcuts = AppShortcutsData(
-                    maxAppShortcuts = 5,
-                    shortcuts = mapOf(
-                        0 to buildDraft(id = "s0", serverId = server.id),
-                        3 to buildDraft(id = "s3", serverId = server.id),
-                    ),
+                maxAppShortcuts = 5,
+                appShortcuts = listOf(
+                    appShortcutSummary(index = 0, id = "s0", serverId = server.id),
+                    appShortcutSummary(index = 3, id = "s3", serverId = server.id),
                 ),
                 homeShortcuts = emptyList(),
             ),
@@ -171,7 +161,14 @@ class ManageShortcutsViewModelTest {
             selectedIconName = null,
             label = id,
             description = "Description for $id",
-            target = ShortcutTargetValue.Lovelace("/lovelace/$id"),
+            destination = ShortcutDestination.Lovelace("/lovelace/$id"),
+        )
+    }
+
+    private fun appShortcutSummary(index: Int, id: String, serverId: Int): AppShortcutSummary {
+        return AppShortcutSummary(
+            index = index,
+            summary = buildDraft(id = id, serverId = serverId).toSummary(),
         )
     }
 }

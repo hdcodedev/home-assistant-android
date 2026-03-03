@@ -20,8 +20,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import io.homeassistant.companion.android.common.compose.composable.HALoading
 import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutEditorUiState
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.components.AppShortcutEditor
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.components.EmptyStateContentSlots
@@ -43,11 +43,30 @@ internal fun ShortcutEditorScreen(
     modifier: Modifier = Modifier,
     onRetry: (() -> Unit),
 ) {
+    if (state.screen.isLoading) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            HALoading()
+        }
+        return
+    }
+
     val noServers = state.screen.servers.isEmpty()
     val notSupported = state.screen.error == ShortcutError.ApiNotSupported
     val homeShortcutsNotSupported = state.screen.error == ShortcutError.HomeShortcutNotSupported
     when (val editor = state.editor) {
-        is ShortcutEditorUiState.EditorState.App -> {
+        is ShortcutEditorUiState.LoadingEditorState -> {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                HALoading()
+            }
+        }
+
+        is ShortcutEditorUiState.AppEditorState -> {
             when {
                 notSupported -> NotSupportedStateContent()
                 noServers -> EmptyStateNoServers()
@@ -72,7 +91,7 @@ internal fun ShortcutEditorScreen(
             }
         }
 
-        is ShortcutEditorUiState.EditorState.Home -> {
+        is ShortcutEditorUiState.HomeEditorState -> {
             when {
                 notSupported -> NotSupportedStateContent()
                 homeShortcutsNotSupported -> HomeShortcutsNotSupportedStateContent()
@@ -115,16 +134,6 @@ private fun ShortcutEditorContent(
         onDelete: () -> Unit,
     ) -> Unit,
 ) {
-    if (screenState.isLoading) {
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center,
-        ) {
-            HALoading()
-        }
-        return
-    }
-
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())

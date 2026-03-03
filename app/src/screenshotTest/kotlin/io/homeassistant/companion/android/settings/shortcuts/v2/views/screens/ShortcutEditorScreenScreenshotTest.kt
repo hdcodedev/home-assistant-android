@@ -4,9 +4,10 @@ import androidx.compose.runtime.Composable
 import com.android.tools.screenshot.PreviewTest
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.data.integration.Entity
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutError
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutTargetValue
+import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.AreaRegistryResponse
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.DeviceRegistryResponse
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.EntityRegistryResponse
@@ -35,7 +36,7 @@ private val mockLovelaceDraft = ShortcutDraft(
     selectedIconName = null,
     label = "Shortcut",
     description = "Description",
-    target = ShortcutTargetValue.Lovelace("/lovelace/shortcut"),
+    destination = ShortcutDestination.Lovelace("/lovelace/shortcut"),
 )
 private val mockEntityDraft = ShortcutDraft(
     id = "app_draft_1",
@@ -43,7 +44,7 @@ private val mockEntityDraft = ShortcutDraft(
     selectedIconName = null,
     label = "Lights",
     description = "Toggle living room lights",
-    target = ShortcutTargetValue.Entity("light.living_room"),
+    destination = ShortcutDestination.Entity("light.living_room"),
 )
 private val mockHomeDraft = ShortcutDraft(
     id = "home_1",
@@ -51,7 +52,7 @@ private val mockHomeDraft = ShortcutDraft(
     selectedIconName = null,
     label = "Home",
     description = "Home shortcut",
-    target = ShortcutTargetValue.Lovelace("/lovelace/home"),
+    destination = ShortcutDestination.Lovelace("/lovelace/home"),
 )
 private val mockEntitiesByServer = mapOf(
     DEFAULT_SERVER_ID to listOf(
@@ -105,8 +106,8 @@ class ShortcutEditorScreenScreenshotTest {
                         isLoading = true,
                         servers = servers,
                     ),
-                    editor = ShortcutEditorUiState.EditorState.AppCreate(
-                        index = 0,
+                    editor = ShortcutEditorUiState.AppEditorState(
+                        mode = EditorMode.CREATE,
                         draftSeed = draft,
                     ),
                 ),
@@ -128,8 +129,8 @@ class ShortcutEditorScreenScreenshotTest {
                         isLoading = false,
                         servers = emptyList(),
                     ),
-                    editor = ShortcutEditorUiState.EditorState.AppCreate(
-                        index = 0,
+                    editor = ShortcutEditorUiState.AppEditorState(
+                        mode = EditorMode.CREATE,
                         draftSeed = draft,
                     ),
                 ),
@@ -153,8 +154,8 @@ class ShortcutEditorScreenScreenshotTest {
                         servers = servers,
                         error = ShortcutError.SlotsFull,
                     ),
-                    editor = ShortcutEditorUiState.EditorState.AppCreate(
-                        index = 0,
+                    editor = ShortcutEditorUiState.AppEditorState(
+                        mode = EditorMode.CREATE,
                         draftSeed = draft,
                     ),
                 ),
@@ -177,8 +178,8 @@ class ShortcutEditorScreenScreenshotTest {
                         isLoading = false,
                         servers = servers,
                     ),
-                    editor = ShortcutEditorUiState.EditorState.AppCreate(
-                        index = 0,
+                    editor = ShortcutEditorUiState.AppEditorState(
+                        mode = EditorMode.CREATE,
                         draftSeed = draft,
                     ),
                 ),
@@ -209,9 +210,10 @@ class ShortcutEditorScreenScreenshotTest {
                         deviceRegistry = deviceRegistry,
                         areaRegistry = areaRegistry,
                     ),
-                    editor = ShortcutEditorUiState.EditorState.AppEdit(
-                        index = 0,
+                    editor = ShortcutEditorUiState.AppEditorState(
+                        mode = EditorMode.EDIT,
                         draftSeed = draft,
+                        appIndex = 0,
                     ),
                 ),
                 dispatch = { _: ShortcutEditAction -> },
@@ -233,7 +235,8 @@ class ShortcutEditorScreenScreenshotTest {
                         isLoading = false,
                         servers = servers,
                     ),
-                    editor = ShortcutEditorUiState.EditorState.HomeCreate(
+                    editor = ShortcutEditorUiState.HomeEditorState(
+                        mode = EditorMode.CREATE,
                         draftSeed = draft,
                     ),
                 ),
@@ -256,7 +259,8 @@ class ShortcutEditorScreenScreenshotTest {
                         isLoading = false,
                         servers = servers,
                     ),
-                    editor = ShortcutEditorUiState.EditorState.HomeEdit(
+                    editor = ShortcutEditorUiState.HomeEditorState(
+                        mode = EditorMode.EDIT,
                         draftSeed = draft,
                     ),
                 ),

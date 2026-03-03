@@ -2,19 +2,19 @@ package io.homeassistant.companion.android.common.data.shortcuts.impl
 
 import io.homeassistant.companion.android.common.data.integration.Entity
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsRepository
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.AppEditorData
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.AppShortcutsData
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.HomeEditorData
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.PinResult
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ServerData
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutEditorData
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutError
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutResult
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutTargetValue
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutsListData
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.empty
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.toSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.AppEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
+import io.homeassistant.companion.android.common.data.shortcuts.entities.HomeEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutsListData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.empty
+import io.homeassistant.companion.android.common.data.shortcuts.entities.toSummary
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.AreaRegistryResponse
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.DeviceRegistryResponse
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.EntityRegistryResponse
@@ -31,7 +31,7 @@ private const val MOCK_APP_SHORTCUT_PREFIX = "shortcut"
 private const val MOCK_HOME_SHORTCUT_PREFIX = "pinned"
 
 @Singleton
-class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
+internal class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
 
     private val defaultServerId = 1
 
@@ -113,7 +113,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:home",
             label = "Home Dashboard",
             description = "Open the main dashboard",
-            target = ShortcutTargetValue.Lovelace("/lovelace/home"),
+            destination = ShortcutDestination.Lovelace("/lovelace/home"),
         ),
         1 to ShortcutDraft(
             id = buildAppId(1),
@@ -121,7 +121,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:flash",
             label = "Energy",
             description = "Open energy dashboard",
-            target = ShortcutTargetValue.Lovelace("/lovelace/energy"),
+            destination = ShortcutDestination.Lovelace("/lovelace/energy"),
         ),
         2 to ShortcutDraft(
             id = buildAppId(2),
@@ -129,7 +129,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:shield",
             label = "Security",
             description = "Open security dashboard",
-            target = ShortcutTargetValue.Lovelace("/lovelace/security"),
+            destination = ShortcutDestination.Lovelace("/lovelace/security"),
         ),
         3 to ShortcutDraft(
             id = buildAppId(3),
@@ -137,7 +137,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:stove",
             label = "Kitchen",
             description = "Open kitchen controls",
-            target = ShortcutTargetValue.Entity("switch.kitchen"),
+            destination = ShortcutDestination.Entity("switch.kitchen"),
         ),
     )
 
@@ -148,7 +148,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:lightbulb",
             label = "Living Room",
             description = "Open Living Room",
-            target = ShortcutTargetValue.Entity("light.living_room"),
+            destination = ShortcutDestination.Entity("light.living_room"),
         ),
         "pinned_kitchen" to ShortcutDraft(
             id = "pinned_kitchen",
@@ -156,7 +156,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:silverware-fork-knife",
             label = "Kitchen",
             description = "Open Kitchen",
-            target = ShortcutTargetValue.Entity("switch.kitchen"),
+            destination = ShortcutDestination.Entity("switch.kitchen"),
         ),
         "pinned_bedroom" to ShortcutDraft(
             id = "pinned_bedroom",
@@ -164,7 +164,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:bed",
             label = "Bedroom",
             description = "Open Bedroom",
-            target = ShortcutTargetValue.Lovelace("/lovelace/bedroom"),
+            destination = ShortcutDestination.Lovelace("/lovelace/bedroom"),
         ),
         "pinned_garage" to ShortcutDraft(
             id = "pinned_garage",
@@ -172,7 +172,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:garage",
             label = "Garage",
             description = "Open Garage",
-            target = ShortcutTargetValue.Lovelace("/lovelace/garage"),
+            destination = ShortcutDestination.Lovelace("/lovelace/garage"),
         ),
         "pinned_energy" to ShortcutDraft(
             id = "pinned_energy",
@@ -180,7 +180,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:flash",
             label = "Energy",
             description = "Open Energy",
-            target = ShortcutTargetValue.Lovelace("/lovelace/energy"),
+            destination = ShortcutDestination.Lovelace("/lovelace/energy"),
         ),
         "pinned_security" to ShortcutDraft(
             id = "pinned_security",
@@ -188,7 +188,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:shield",
             label = "Security",
             description = "Open Security",
-            target = ShortcutTargetValue.Lovelace("/lovelace/security"),
+            destination = ShortcutDestination.Lovelace("/lovelace/security"),
         ),
         "pinned_cameras" to ShortcutDraft(
             id = "pinned_cameras",
@@ -196,7 +196,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:camera",
             label = "Cameras",
             description = "Open Cameras",
-            target = ShortcutTargetValue.Lovelace("/lovelace/cameras"),
+            destination = ShortcutDestination.Lovelace("/lovelace/cameras"),
         ),
         "pinned_climate" to ShortcutDraft(
             id = "pinned_climate",
@@ -204,7 +204,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:thermostat",
             label = "Climate",
             description = "Open Climate",
-            target = ShortcutTargetValue.Lovelace("/lovelace/climate"),
+            destination = ShortcutDestination.Lovelace("/lovelace/climate"),
         ),
         "pinned_office" to ShortcutDraft(
             id = "pinned_office",
@@ -212,7 +212,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:briefcase",
             label = "Office",
             description = "Open Office",
-            target = ShortcutTargetValue.Lovelace("/lovelace/office"),
+            destination = ShortcutDestination.Lovelace("/lovelace/office"),
         ),
         "pinned_lights" to ShortcutDraft(
             id = "pinned_lights",
@@ -220,7 +220,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:lightbulb",
             label = "Lights",
             description = "Open Lights",
-            target = ShortcutTargetValue.Entity("light.living_room"),
+            destination = ShortcutDestination.Entity("light.living_room"),
         ),
         "pinned_media" to ShortcutDraft(
             id = "pinned_media",
@@ -228,7 +228,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:play-circle",
             label = "Media",
             description = "Open Media",
-            target = ShortcutTargetValue.Lovelace("/lovelace/media"),
+            destination = ShortcutDestination.Lovelace("/lovelace/media"),
         ),
         "pinned_garden" to ShortcutDraft(
             id = "pinned_garden",
@@ -236,7 +236,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:home",
             label = "Garden",
             description = "Open Garden",
-            target = ShortcutTargetValue.Lovelace("/lovelace/garden"),
+            destination = ShortcutDestination.Lovelace("/lovelace/garden"),
         ),
         "pinned_patio" to ShortcutDraft(
             id = "pinned_patio",
@@ -244,7 +244,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:flash",
             label = "Patio",
             description = "Open Patio",
-            target = ShortcutTargetValue.Lovelace("/lovelace/patio"),
+            destination = ShortcutDestination.Lovelace("/lovelace/patio"),
         ),
         "pinned_guests" to ShortcutDraft(
             id = "pinned_guests",
@@ -252,7 +252,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:briefcase",
             label = "Guests",
             description = "Open Guests",
-            target = ShortcutTargetValue.Lovelace("/lovelace/guests"),
+            destination = ShortcutDestination.Lovelace("/lovelace/guests"),
         ),
         "pinned_laundry" to ShortcutDraft(
             id = "pinned_laundry",
@@ -260,7 +260,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:stove",
             label = "Laundry",
             description = "Open Laundry",
-            target = ShortcutTargetValue.Lovelace("/lovelace/laundry"),
+            destination = ShortcutDestination.Lovelace("/lovelace/laundry"),
         ),
         "pinned_dining" to ShortcutDraft(
             id = "pinned_dining",
@@ -268,7 +268,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:silverware-fork-knife",
             label = "Dining",
             description = "Open Dining",
-            target = ShortcutTargetValue.Lovelace("/lovelace/dining"),
+            destination = ShortcutDestination.Lovelace("/lovelace/dining"),
         ),
         "pinned_hallway" to ShortcutDraft(
             id = "pinned_hallway",
@@ -276,7 +276,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:camera",
             label = "Hallway",
             description = "Open Hallway",
-            target = ShortcutTargetValue.Lovelace("/lovelace/hallway"),
+            destination = ShortcutDestination.Lovelace("/lovelace/hallway"),
         ),
         "pinned_kids_room" to ShortcutDraft(
             id = "pinned_kids_room",
@@ -284,7 +284,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:lightbulb",
             label = "Kids Room",
             description = "Open Kids Room",
-            target = ShortcutTargetValue.Lovelace("/lovelace/kids-room"),
+            destination = ShortcutDestination.Lovelace("/lovelace/kids-room"),
         ),
         "pinned_bathroom" to ShortcutDraft(
             id = "pinned_bathroom",
@@ -292,7 +292,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:thermostat",
             label = "Bathroom",
             description = "Open Bathroom",
-            target = ShortcutTargetValue.Lovelace("/lovelace/bathroom"),
+            destination = ShortcutDestination.Lovelace("/lovelace/bathroom"),
         ),
         "pinned_guest_room" to ShortcutDraft(
             id = "pinned_guest_room",
@@ -300,7 +300,7 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:bed",
             label = "Guest Room",
             description = "Open Guest Room",
-            target = ShortcutTargetValue.Lovelace("/lovelace/guest-room"),
+            destination = ShortcutDestination.Lovelace("/lovelace/guest-room"),
         ),
         "pinned_server_room" to ShortcutDraft(
             id = "pinned_server_room",
@@ -308,17 +308,17 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
             selectedIconName = "mdi:shield",
             label = "Server Room",
             description = "Open Server Room",
-            target = ShortcutTargetValue.Lovelace("/lovelace/server-room"),
+            destination = ShortcutDestination.Lovelace("/lovelace/server-room"),
         ),
     )
 
     override suspend fun loadShortcutsList(): ShortcutResult<ShortcutsListData> {
         return ShortcutResult.Success(
             ShortcutsListData(
-                appShortcuts = AppShortcutsData(
-                    maxAppShortcuts = MOCK_MAX_APP_SHORTCUTS,
-                    shortcuts = appShortcuts.toMap(),
-                ),
+                maxAppShortcuts = MOCK_MAX_APP_SHORTCUTS,
+                appShortcuts = appShortcuts.entries.sortedBy { it.key }.map { (index, shortcut) ->
+                    AppShortcutSummary(index = index, summary = shortcut.toSummary())
+                },
                 homeShortcuts = homeShortcuts.values.map { it.toSummary() }.reversed(),
             ),
         )
@@ -339,73 +339,65 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
         }
 
         val existingDraft = appShortcuts[index]
-        val draft = existingDraft ?: ShortcutDraft.empty(index).copy(serverId = defaultServerId)
+        val draft = existingDraft ?: ShortcutDraft.empty().copy(serverId = defaultServerId)
         return ShortcutResult.Success(
-            if (existingDraft == null) {
-                AppEditorData.Create(index = index, draftSeed = draft)
-            } else {
-                AppEditorData.Edit(index = index, draftSeed = draft)
-            },
-        )
-    }
-
-    override suspend fun loadAppEditorFirstAvailable(): ShortcutResult<AppEditorData> {
-        val index = (0 until MOCK_MAX_APP_SHORTCUTS).firstOrNull { !appShortcuts.containsKey(it) }
-            ?: return ShortcutResult.Error(ShortcutError.SlotsFull)
-
-        return ShortcutResult.Success(
-            AppEditorData.Create(
+            AppEditorData(
                 index = index,
-                draftSeed = ShortcutDraft.empty(index).copy(serverId = defaultServerId),
+                draftSeed = draft,
+                mode = if (existingDraft == null) EditorMode.CREATE else EditorMode.EDIT,
             ),
         )
     }
 
     override suspend fun loadHomeEditor(shortcutId: String): ShortcutResult<HomeEditorData> {
-        if (shortcutId.isBlank()) return ShortcutResult.Error(ShortcutError.InvalidInput)
+        val requestedId = shortcutId.trim()
+        if (requestedId.isEmpty()) {
+            return ShortcutResult.Error(ShortcutError.InvalidInput)
+        }
 
-        val existingDraft = homeShortcuts[shortcutId]
-        val draft = existingDraft ?: ShortcutDraft.empty(shortcutId).copy(serverId = defaultServerId)
+        val existingDraft = homeShortcuts[requestedId]
+        val draft = existingDraft ?: ShortcutDraft.empty(requestedId).copy(serverId = defaultServerId)
         return ShortcutResult.Success(
-            if (existingDraft == null) {
-                HomeEditorData.Create(draftSeed = draft)
-            } else {
-                HomeEditorData.Edit(draftSeed = draft)
-            },
-        )
-    }
-
-    override suspend fun loadHomeEditorForCreate(): ShortcutResult<HomeEditorData> {
-        return ShortcutResult.Success(
-            HomeEditorData.Create(
-                draftSeed = ShortcutDraft.empty("").copy(serverId = defaultServerId),
+            HomeEditorData(
+                draftSeed = draft,
+                mode = if (existingDraft == null) EditorMode.CREATE else EditorMode.EDIT,
             ),
         )
     }
 
-    override suspend fun upsertAppShortcut(
-        index: Int,
+    override suspend fun saveAppShortcut(
+        index: Int?,
         shortcut: ShortcutDraft,
-        isEditing: Boolean,
     ): ShortcutResult<AppEditorData> {
-        if (index !in 0 until MOCK_MAX_APP_SHORTCUTS) {
-            return ShortcutResult.Error(ShortcutError.InvalidIndex)
+        val resolvedIndex = if (index != null) {
+            if (index !in 0 until MOCK_MAX_APP_SHORTCUTS) {
+                return ShortcutResult.Error(ShortcutError.InvalidIndex)
+            }
+            index
+        } else {
+            (0 until MOCK_MAX_APP_SHORTCUTS).firstOrNull { !appShortcuts.containsKey(it) }
+                ?: return ShortcutResult.Error(ShortcutError.SlotsFull)
         }
-        if (!isEditing && appShortcuts.containsKey(index)) {
+        val expectedId = buildAppId(resolvedIndex)
+        if (appShortcuts.containsKey(resolvedIndex) && shortcut.id != expectedId) {
             return ShortcutResult.Error(ShortcutError.SlotsFull)
         }
 
         val normalized = shortcut.copy(
-            id = buildAppId(index),
+            id = expectedId,
             serverId = normalizeServerId(shortcut.serverId),
         )
-        appShortcuts[index] = normalized
+        appShortcuts[resolvedIndex] = normalized
         return ShortcutResult.Success(
-            AppEditorData.Edit(index = index, draftSeed = normalized),
+            AppEditorData(
+                index = resolvedIndex,
+                draftSeed = normalized,
+                mode = EditorMode.EDIT,
+            ),
         )
     }
 
-    override suspend fun deleteAppShortcut(index: Int): ShortcutResult<Unit> {
+    override fun deleteAppShortcut(index: Int): ShortcutResult<Unit> {
         if (index !in 0 until MOCK_MAX_APP_SHORTCUTS) {
             return ShortcutResult.Error(ShortcutError.InvalidIndex)
         }
@@ -413,27 +405,28 @@ class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepository {
         return ShortcutResult.Success(Unit)
     }
 
-    override suspend fun upsertHomeShortcut(shortcut: ShortcutDraft): ShortcutResult<PinResult> {
+    override suspend fun upsertHomeShortcut(shortcut: ShortcutDraft): ShortcutResult<Unit> {
         val inputId = shortcut.id.trim()
         val id = if (inputId.isNotBlank()) inputId else buildHomeId(shortcut.label)
-        val exists = homeShortcuts.containsKey(id)
 
         homeShortcuts[id] = shortcut.copy(
             id = id,
             serverId = normalizeServerId(shortcut.serverId),
         )
 
-        return ShortcutResult.Success(if (exists) PinResult.Updated else PinResult.Requested)
+        return ShortcutResult.Success(Unit)
     }
 
-    override suspend fun deleteHomeShortcut(shortcutId: String): ShortcutResult<Unit> {
+    override fun deleteHomeShortcut(shortcutId: String): ShortcutResult<Unit> {
         if (shortcutId.isBlank()) return ShortcutResult.Error(ShortcutError.InvalidInput)
         homeShortcuts.remove(shortcutId)
         return ShortcutResult.Success(Unit)
     }
 
-    private fun normalizeServerId(serverId: Int): Int {
-        return servers.firstOrNull { it.id == serverId }?.id ?: defaultServerId
+    private fun normalizeServerId(serverId: Int?): Int {
+        return serverId
+            ?.let { requestedId -> servers.firstOrNull { it.id == requestedId }?.id }
+            ?: defaultServerId
     }
 
     private fun buildHomeId(label: String): String {

@@ -19,7 +19,7 @@ import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.compose.theme.LocalHAColorScheme
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutEditorUiState
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.preview.ShortcutPreviewData
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.screens.ShortcutEditorScreenState
@@ -28,7 +28,7 @@ import io.homeassistant.companion.android.settings.shortcuts.v2.views.selector.S
 @Composable
 internal fun HomeShortcutEditor(
     draft: ShortcutDraft,
-    state: ShortcutEditorUiState.EditorState.Home,
+    state: ShortcutEditorUiState.HomeEditorState,
     screen: ShortcutEditorScreenState,
     onDraftChange: (ShortcutDraft) -> Unit,
     onIconClick: () -> Unit,
@@ -37,7 +37,7 @@ internal fun HomeShortcutEditor(
 ) {
     val canSubmit by remember(draft, screen.servers) {
         derivedStateOf {
-            canSubmit(draft = draft, screen = screen, requireId = false)
+            isDraftValidForSubmit(draft = draft, screen = screen)
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(HADimens.SPACE2)) {
@@ -66,7 +66,7 @@ internal fun HomeShortcutEditor(
             descriptionText = stringResource(R.string.shortcut_v2_shortcut_description),
             screen = screen,
             onDraftChange = onDraftChange,
-            isEditing = state is ShortcutEditorUiState.EditorState.HomeEdit,
+            isEditing = state.isEditing,
             canSubmit = canSubmit,
             isSaving = screen.isSaving,
             onSubmit = onSubmit,

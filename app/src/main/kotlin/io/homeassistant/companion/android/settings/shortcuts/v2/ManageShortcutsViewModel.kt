@@ -5,10 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsRepository
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutError
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutResult
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutSummary
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.toSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutSummary
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,15 +18,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @Immutable
-internal data class AppShortcutItem(val index: Int, val summary: ShortcutSummary)
-
-@Immutable
 internal data class ShortcutsListState(
     val isLoading: Boolean = true,
     val error: ShortcutError? = null,
     val homeShortcutError: ShortcutError? = null,
     val maxAppShortcuts: Int? = null,
-    val appShortcutItems: List<AppShortcutItem> = emptyList(),
+    val appShortcutItems: List<AppShortcutSummary> = emptyList(),
     val homeShortcutItems: List<ShortcutSummary> = emptyList(),
 ) {
     val hasError: Boolean get() = error != null
@@ -75,9 +72,7 @@ internal class ManageShortcutsViewModel @Inject constructor(private val shortcut
                 }
             }
 
-            val appItems = listData.appShortcuts.orderedShortcuts
-                .map { (index, draft) -> AppShortcutItem(index = index, summary = draft.toSummary()) }
-                .toList()
+            val appItems = listData.appShortcuts.toList()
 
             val homeItems = listData.homeShortcuts.toList()
             _uiState.update {
@@ -85,7 +80,7 @@ internal class ManageShortcutsViewModel @Inject constructor(private val shortcut
                     isLoading = false,
                     error = null,
                     homeShortcutError = listData.homeShortcutsError,
-                    maxAppShortcuts = listData.appShortcuts.maxAppShortcuts,
+                    maxAppShortcuts = listData.maxAppShortcuts,
                     appShortcutItems = appItems,
                     homeShortcutItems = homeItems,
                 )

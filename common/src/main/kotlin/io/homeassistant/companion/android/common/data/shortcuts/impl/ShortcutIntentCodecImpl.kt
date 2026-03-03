@@ -3,9 +3,8 @@ package io.homeassistant.companion.android.common.data.shortcuts.impl
 import android.content.Intent
 import android.os.Bundle
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutTargetValue
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutType
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.toShortcutType
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutType
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,27 +30,31 @@ internal class ShortcutIntentCodecImpl @Inject constructor() : ShortcutIntentCod
         }
     }
 
-    override fun parseTarget(extras: Bundle?, path: String): ShortcutTargetValue {
+    override fun parseDestination(extras: Bundle?, path: String): ShortcutDestination {
         return when (parseShortcutType(extras, path)) {
             ShortcutType.LOVELACE -> {
-                ShortcutTargetValue.Lovelace(path.takeUnless { it.startsWith(ENTITY_PREFIX) }.orEmpty())
+                ShortcutDestination.Lovelace(path.takeUnless { it.startsWith(ENTITY_PREFIX) }.orEmpty())
             }
 
-            ShortcutType.ENTITY_ID -> ShortcutTargetValue.Entity(path.removePrefix(ENTITY_PREFIX))
+            ShortcutType.ENTITY_ID -> ShortcutDestination.Entity(path.removePrefix(ENTITY_PREFIX))
         }
     }
 
-    override fun encodeTarget(target: ShortcutTargetValue): String {
-        return when (target) {
-            is ShortcutTargetValue.Lovelace -> target.path
-            is ShortcutTargetValue.Entity -> "$ENTITY_PREFIX${target.entityId}"
+    override fun encodeDestination(shortcutDestination: ShortcutDestination): String {
+        return when (shortcutDestination) {
+            is ShortcutDestination.Lovelace -> shortcutDestination.path
+            is ShortcutDestination.Entity -> "$ENTITY_PREFIX${shortcutDestination.entityId}"
         }
     }
 
-    override fun applyShortcutExtras(intent: Intent, target: ShortcutTargetValue, path: String, iconName: String?) {
+    override fun applyShortcutExtras(intent: Intent, shortcutDestination: ShortcutDestination, path: String, iconName: String?) {
         intent.putExtra(EXTRA_SHORTCUT_PATH, path)
         iconName?.let { intent.putExtra(EXTRA_ICON_NAME, it) }
-        intent.putExtra(EXTRA_TYPE, target.toShortcutType().name)
+        val type = when (shortcutDestination) {
+            is ShortcutDestination.Lovelace -> ShortcutType.LOVELACE
+            is ShortcutDestination.Entity -> ShortcutType.ENTITY_ID
+        }
+        intent.putExtra(EXTRA_TYPE, type.name)
     }
 
     private fun parseShortcutType(extras: Bundle?, path: String): ShortcutType {
@@ -64,8 +67,8 @@ internal class ShortcutIntentCodecImpl @Inject constructor() : ShortcutIntentCod
         private const val ENTITY_PREFIX = "entityId:"
         private const val MDI_PREFIX = "mdi:"
         private const val EXTRA_ICON_ID = "iconId"
-        const val EXTRA_ICON_NAME = "iconName"
-        const val EXTRA_SHORTCUT_PATH = "shortcutPath"
-        const val EXTRA_TYPE = "type"
+        private const val EXTRA_ICON_NAME = "iconName"
+        internal const val EXTRA_SHORTCUT_PATH = "shortcutPath"
+        private const val EXTRA_TYPE = "type"
     }
 }

@@ -5,6 +5,8 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
+import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsRepository
+import io.homeassistant.companion.android.common.data.shortcuts.impl.MockShortcutsRepositoryImpl
 import io.homeassistant.companion.android.common.data.shortcuts.impl.ShortcutIntentCodecImpl
 import javax.inject.Singleton
 
@@ -14,4 +16,8 @@ internal abstract class ShortcutsRepositoryModule {
     @Binds
     @Singleton
     abstract fun bindShortcutIntentCodec(impl: ShortcutIntentCodecImpl): ShortcutIntentCodec
+
+    @Binds
+    @Singleton
+    abstract fun bindShortcutsRepository(impl: MockShortcutsRepositoryImpl): ShortcutsRepository
 }

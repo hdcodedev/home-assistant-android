@@ -26,10 +26,9 @@ import io.homeassistant.companion.android.common.compose.composable.RadioOption
 import io.homeassistant.companion.android.common.compose.theme.HADimens
 import io.homeassistant.companion.android.common.compose.theme.HATextStyle
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutTargetValue
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutType
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.toShortcutType
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutType
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.preview.ShortcutPreviewData
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.screens.ShortcutEditorScreenState
 import io.homeassistant.companion.android.util.compose.ServerExposedDropdownMenu
@@ -60,15 +59,18 @@ internal fun ShortcutEditorForm(
         )
 
         ShortcutTypeSelector(
-            type = draft.target.toShortcutType(),
+            type = when (draft.destination) {
+                is ShortcutDestination.Lovelace -> ShortcutType.LOVELACE
+                is ShortcutDestination.Entity -> ShortcutType.ENTITY_ID
+            },
             onTypeChange = { onDraftChange(draft.withType(it)) },
         )
 
         ShortcutTargetInput(
-            target = draft.target,
+            destination = draft.destination,
             screen = screen,
             serverId = draft.serverId,
-            onTargetChange = { onDraftChange(draft.copy(target = it)) },
+            onDestinationChange = { onDraftChange(draft.copy(destination = it)) },
         )
 
         PrimaryActionButtons(
@@ -81,17 +83,35 @@ internal fun ShortcutEditorForm(
     }
 }
 
+internal fun isDraftValidForSubmit(draft: ShortcutDraft, screen: ShortcutEditorScreenState): Boolean {
+    val hasValidTarget = when (val destination = draft.destination) {
+        is ShortcutDestination.Lovelace -> destination.path.isNotBlank()
+        is ShortcutDestination.Entity -> destination.entityId.isNotBlank()
+    }
+    val hasValidServer = screen.servers.size == 1 ||
+        draft.serverId?.let { selectedId -> screen.servers.any { it.id == selectedId } } == true
+    return draft.label.isNotEmpty() &&
+        draft.description.isNotEmpty() &&
+        hasValidTarget &&
+        hasValidServer
+}
+
 private fun ShortcutDraft.withType(type: ShortcutType): ShortcutDraft {
     val newTarget = when (type) {
         ShortcutType.LOVELACE -> {
-            target as? ShortcutTargetValue.Lovelace ?: ShortcutTargetValue.Lovelace("")
+            destination as? ShortcutDestination.Lovelace ?: ShortcutDestination.Lovelace("")
         }
 
         ShortcutType.ENTITY_ID -> {
-            target as? ShortcutTargetValue.Entity ?: ShortcutTargetValue.Entity("")
+            destination as? ShortcutDestination.Entity ?: ShortcutDestination.Entity("")
         }
     }
-    return copy(target = newTarget)
+    return copy(destination = newTarget)
+}
+
+private fun resolveServerIdForEditor(serverId: Int?, screen: ShortcutEditorScreenState): Int? {
+    if (serverId != null && screen.servers.any { it.id == serverId }) return serverId
+    return if (screen.servers.size == 1) screen.servers.first().id else null
 }
 
 @Composable
@@ -122,9 +142,7 @@ private fun ShortcutMetadataFields(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        if (screen.servers.isNotEmpty() &&
-            (screen.servers.size > 1 || screen.servers.none { it.id == draft.serverId })
-        ) {
+        if (screen.servers.size > 1) {
             ServerExposedDropdownMenu(
                 servers = screen.servers,
                 current = draft.serverId,
@@ -163,18 +181,18 @@ private fun ShortcutTypeSelector(type: ShortcutType, onTypeChange: (ShortcutType
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ShortcutTargetInput(
-    target: ShortcutTargetValue,
+    destination: ShortcutDestination,
     screen: ShortcutEditorScreenState,
-    serverId: Int,
-    onTargetChange: (ShortcutTargetValue) -> Unit,
+    serverId: Int?,
+    onDestinationChange: (ShortcutDestination) -> Unit,
 ) {
-    when (target) {
-        is ShortcutTargetValue.Lovelace -> {
+    when (destination) {
+        is ShortcutDestination.Lovelace -> {
             val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
             HATextField(
-                value = target.path,
-                onValueChange = { onTargetChange(ShortcutTargetValue.Lovelace(it)) },
+                value = destination.path,
+                onValueChange = { onDestinationChange(ShortcutDestination.Lovelace(it)) },
                 label = { Text(stringResource(R.string.shortcut_v2_dashboard_path_label)) },
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Done,
@@ -187,12 +205,13 @@ private fun ShortcutTargetInput(
             )
         }
 
-        is ShortcutTargetValue.Entity -> {
-            val selectedEntityId = target.entityId.takeIf { it.isNotBlank() }
-            val entities = screen.entities[serverId] ?: emptyList()
-            val entityRegistry = screen.entityRegistry[serverId]
-            val deviceRegistry = screen.deviceRegistry[serverId]
-            val areaRegistry = screen.areaRegistry[serverId]
+        is ShortcutDestination.Entity -> {
+            val resolvedServerId = resolveServerIdForEditor(serverId, screen)
+            val selectedEntityId = destination.entityId.takeIf { it.isNotBlank() }
+            val entities = resolvedServerId?.let { screen.entities[it] } ?: emptyList()
+            val entityRegistry = resolvedServerId?.let { screen.entityRegistry[it] }
+            val deviceRegistry = resolvedServerId?.let { screen.deviceRegistry[it] }
+            val areaRegistry = resolvedServerId?.let { screen.areaRegistry[it] }
             EntityPicker(
                 entities = entities,
                 entityRegistry = entityRegistry,
@@ -200,10 +219,10 @@ private fun ShortcutTargetInput(
                 areaRegistry = areaRegistry,
                 selectedEntityId = selectedEntityId,
                 onEntitySelectedId = { entityId ->
-                    onTargetChange(ShortcutTargetValue.Entity(entityId))
+                    onDestinationChange(ShortcutDestination.Entity(entityId))
                 },
                 onEntityCleared = {
-                    onTargetChange(ShortcutTargetValue.Entity(""))
+                    onDestinationChange(ShortcutDestination.Entity(""))
                 },
             )
         }

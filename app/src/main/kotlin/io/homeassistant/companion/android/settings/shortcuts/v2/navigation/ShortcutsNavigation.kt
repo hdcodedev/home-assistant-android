@@ -16,11 +16,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import io.homeassistant.companion.android.common.R
-import io.homeassistant.companion.android.settings.shortcuts.v2.EditShortcutViewModel
 import io.homeassistant.companion.android.settings.shortcuts.v2.ManageShortcutsViewModel
+import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutEditorUiState
+import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutEditorViewModel
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutsListAction
+import io.homeassistant.companion.android.settings.shortcuts.v2.views.screens.ShortcutEditAction
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.screens.ShortcutEditorScreen
 import io.homeassistant.companion.android.settings.shortcuts.v2.views.screens.ShortcutsListScreen
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -153,31 +156,27 @@ private fun ShortcutsListRouteScreen(
 
 @Composable
 private fun CreateAppShortcutRouteScreen(
-    viewModel: EditShortcutViewModel = hiltViewModel(),
+    viewModel: ShortcutEditorViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.createAppShortcutFirstAvailable()
+        viewModel.openCreateAppShortcut()
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.closeEvents.collect {
-            onNavigateBack()
-        }
-    }
-
-    ShortcutEditorScreen(
-        state = uiState,
+    ShortcutEditorRouteScreenContent(
+        uiState = uiState,
+        closeEvents = viewModel.closeEvents,
         dispatch = viewModel::dispatch,
-        onRetry = viewModel::createAppShortcutFirstAvailable,
+        onRetry = viewModel::openCreateAppShortcut,
+        onNavigateBack = onNavigateBack,
     )
 }
 
 @Composable
 private fun CreateHomeShortcutRouteScreen(
-    viewModel: EditShortcutViewModel = hiltViewModel(),
+    viewModel: ShortcutEditorViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -186,23 +185,19 @@ private fun CreateHomeShortcutRouteScreen(
         viewModel.openCreateHomeShortcut()
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.closeEvents.collect {
-            onNavigateBack()
-        }
-    }
-
-    ShortcutEditorScreen(
-        state = uiState,
+    ShortcutEditorRouteScreenContent(
+        uiState = uiState,
+        closeEvents = viewModel.closeEvents,
         dispatch = viewModel::dispatch,
         onRetry = viewModel::openCreateHomeShortcut,
+        onNavigateBack = onNavigateBack,
     )
 }
 
 @Composable
 private fun EditAppShortcutRouteScreen(
     route: EditAppShortcutRoute,
-    viewModel: EditShortcutViewModel = hiltViewModel(),
+    viewModel: ShortcutEditorViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -211,16 +206,12 @@ private fun EditAppShortcutRouteScreen(
         viewModel.openEditAppShortcut(route.index)
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.closeEvents.collect {
-            onNavigateBack()
-        }
-    }
-
-    ShortcutEditorScreen(
-        state = uiState,
+    ShortcutEditorRouteScreenContent(
+        uiState = uiState,
+        closeEvents = viewModel.closeEvents,
         dispatch = viewModel::dispatch,
         onRetry = { viewModel.openEditAppShortcut(route.index) },
+        onNavigateBack = onNavigateBack,
     )
 }
 
@@ -228,7 +219,7 @@ private fun EditAppShortcutRouteScreen(
 private fun EditHomeShortcutRouteScreen(
     route: EditHomeShortcutRoute,
     onNavigateBack: () -> Unit,
-    viewModel: EditShortcutViewModel = hiltViewModel(),
+    viewModel: ShortcutEditorViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -236,15 +227,32 @@ private fun EditHomeShortcutRouteScreen(
         viewModel.openEditHomeShortcut(route.id)
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.closeEvents.collect {
+    ShortcutEditorRouteScreenContent(
+        uiState = uiState,
+        closeEvents = viewModel.closeEvents,
+        dispatch = viewModel::dispatch,
+        onRetry = { viewModel.openEditHomeShortcut(route.id) },
+        onNavigateBack = onNavigateBack,
+    )
+}
+
+@Composable
+private fun ShortcutEditorRouteScreenContent(
+    uiState: ShortcutEditorUiState,
+    closeEvents: Flow<Unit>,
+    dispatch: (ShortcutEditAction) -> Unit,
+    onRetry: () -> Unit,
+    onNavigateBack: () -> Unit,
+) {
+    LaunchedEffect(closeEvents) {
+        closeEvents.collect {
             onNavigateBack()
         }
     }
 
     ShortcutEditorScreen(
         state = uiState,
-        dispatch = viewModel::dispatch,
-        onRetry = { viewModel.openEditHomeShortcut(route.id) },
+        dispatch = dispatch,
+        onRetry = onRetry,
     )
 }

@@ -3,9 +3,9 @@ package io.homeassistant.companion.android.settings.shortcuts.v2.views.screens
 import androidx.compose.runtime.Composable
 import com.android.tools.screenshot.PreviewTest
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutError
-import io.homeassistant.companion.android.common.data.shortcuts.impl.entities.ShortcutSummary
-import io.homeassistant.companion.android.settings.shortcuts.v2.AppShortcutItem
+import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutSummary
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutsListAction
 import io.homeassistant.companion.android.settings.shortcuts.v2.ShortcutsListState
 import io.homeassistant.companion.android.util.compose.HAPreviews
@@ -114,7 +114,7 @@ class ShortcutsListScreenScreenshotTest {
 
 private fun mockAppItems(count: Int) = List(count) { index ->
     val number = index + 1
-    AppShortcutItem(
+    AppShortcutSummary(
         index = index,
         summary = ShortcutSummary(
             id = "app_$number",
