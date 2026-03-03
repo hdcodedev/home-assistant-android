@@ -29,7 +29,7 @@ internal class ShortcutIntentCodecImpl @Inject constructor() : ShortcutIntentCod
         }
     }
 
-    override fun parseDestination(extras: Bundle?, path: String): ShortcutDestination {
+    override fun parseDestination(path: String): ShortcutDestination {
         return if (path.startsWith(ENTITY_PREFIX)) {
             ShortcutDestination.Entity(path.removePrefix(ENTITY_PREFIX))
         } else {

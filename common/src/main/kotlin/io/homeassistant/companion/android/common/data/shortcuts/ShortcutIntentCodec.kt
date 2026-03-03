@@ -6,7 +6,7 @@ import io.homeassistant.companion.android.common.data.shortcuts.entities.Shortcu
 
 interface ShortcutIntentCodec {
     fun parseIcon(extras: Bundle?, iconIdToName: Map<Int, String>): String?
-    fun parseDestination(extras: Bundle?, path: String): ShortcutDestination
+    fun parseDestination(path: String): ShortcutDestination
     fun encodeDestination(shortcutDestination: ShortcutDestination): String
     fun applyShortcutExtras(intent: Intent, iconName: String?)
 }

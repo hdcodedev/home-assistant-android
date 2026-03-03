@@ -5,7 +5,6 @@ import androidx.compose.runtime.Immutable
 @Immutable
 sealed interface ShortcutDestination {
     data class Lovelace(val path: String) : ShortcutDestination
-
     data class Entity(val entityId: String) : ShortcutDestination
 }
 

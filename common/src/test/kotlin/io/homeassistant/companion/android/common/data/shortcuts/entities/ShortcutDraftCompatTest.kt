@@ -20,11 +20,11 @@ class ShortcutDraftCompatTest {
             ),
         )
 
-        val path = resolveShortcutPath(
+        val path = resolveShortcutPathCompat(
             extras = extras,
             action = "entityId:light.kitchen",
         )
-        val destination = codec.parseDestination(extras = extras, path = path)
+        val destination = codec.parseDestination(path)
         val icon = codec.parseIcon(extras = extras, iconIdToName = emptyMap())
 
         assertEquals("entityId:light.kitchen", path)
@@ -40,11 +40,11 @@ class ShortcutDraftCompatTest {
             ),
         )
 
-        val path = resolveShortcutPath(
+        val path = resolveShortcutPathCompat(
             extras = extras,
             action = Intent.ACTION_VIEW,
         )
-        val destination = codec.parseDestination(extras = extras, path = path)
+        val destination = codec.parseDestination(path)
 
         assertEquals("/lovelace/home", path)
         assertEquals(ShortcutDestination.Lovelace("/lovelace/home"), destination)
@@ -59,11 +59,11 @@ class ShortcutDraftCompatTest {
             ),
         )
 
-        val path = resolveShortcutPath(
+        val path = resolveShortcutPathCompat(
             extras = extras,
             action = Intent.ACTION_VIEW,
         )
-        val destination = codec.parseDestination(extras = extras, path = path)
+        val destination = codec.parseDestination(path)
         val icon = codec.parseIcon(extras = extras, iconIdToName = emptyMap())
 
         assertEquals("entityId:switch.kitchen", path)
@@ -79,11 +79,11 @@ class ShortcutDraftCompatTest {
             ),
         )
 
-        val path = resolveShortcutPath(
+        val path = resolveShortcutPathCompat(
             extras = extras,
             action = "/lovelace/home",
         )
-        val destination = codec.parseDestination(extras = extras, path = path)
+        val destination = codec.parseDestination(path)
 
         assertEquals(ShortcutDestination.Lovelace("/lovelace/home"), destination)
     }
@@ -99,5 +99,10 @@ class ShortcutDraftCompatTest {
             every { bundle.getInt(any()) } returns 0
             every { bundle.getInt(any(), any()) } answers { secondArg() }
         }
+    }
+
+    private fun resolveShortcutPathCompat(extras: Bundle?, action: String?): String {
+        return extras?.getString("path").orEmpty()
+            .ifBlank { action.orEmpty() }
     }
 }

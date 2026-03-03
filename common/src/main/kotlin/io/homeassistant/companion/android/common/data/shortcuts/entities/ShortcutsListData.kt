@@ -13,6 +13,5 @@ data class ShortcutsListData(
 @Immutable
 data class AppShortcutSummary(val index: Int, val summary: ShortcutSummary)
 
-
 @Immutable
 data class ShortcutSummary(val id: String, val selectedIconName: String?, val label: String)

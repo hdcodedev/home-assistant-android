@@ -4,7 +4,6 @@ import io.homeassistant.companion.android.common.data.servers.ServerManager
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
-import io.homeassistant.companion.android.common.data.shortcuts.entities.empty
 import io.homeassistant.companion.android.database.server.Server
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -19,40 +18,35 @@ internal class ServersDataSource(
     private val serverManager: ServerManager,
 ) {
     suspend fun getServers(): ShortcutResult<ServersData> {
-        val servers = serverManager.servers()
-        if (servers.isEmpty()) {
+        val availableServers = serverManager.servers()
+        if (availableServers.isEmpty()) {
             return ShortcutResult.Error(ShortcutError.NoServers)
         }
-        val currentId = serverManager.getServer()?.id ?: 0
-        val defaultId = servers.firstOrNull { it.id == currentId }?.id ?: servers.first().id
-        return ShortcutResult.Success(ServersData(servers, defaultId))
+        val selectedServerId = serverManager.getServer()?.id
+        val defaultServerId =
+            availableServers.firstOrNull { it.id == selectedServerId }?.id ?: availableServers.first().id
+        return ShortcutResult.Success(ServersData(availableServers, defaultServerId))
     }
 
-    private fun resolveServerIdForSave(serverId: Int?, servers: ServersData): Int {
-        return serverId
-            ?.let { requestedId -> servers.servers.firstOrNull { it.id == requestedId }?.id }
-            ?: servers.defaultServerId
-    }
+    private fun resolveServerIdForSave(requestedServerId: Int?, serversData: ServersData): Int =
+        serversData.servers.firstOrNull { it.id == requestedServerId }?.id ?: serversData.defaultServerId
 
-    suspend fun getDefaultServerId(): ShortcutResult<Int> {
-        return when (val servers = getServers()) {
-            is ShortcutResult.Success -> ShortcutResult.Success(servers.data.defaultServerId)
-            is ShortcutResult.Error -> ShortcutResult.Error(servers.error)
+    suspend fun getDefaultServerId(): ShortcutResult<Int> =
+        when (val result = getServers()) {
+            is ShortcutResult.Success -> ShortcutResult.Success(result.data.defaultServerId)
+            is ShortcutResult.Error -> result
         }
-    }
 
-    suspend fun resolveForSave(serverId: Int?): ShortcutResult<SaveServerData> {
-        return when (val servers = getServers()) {
+    suspend fun resolveForSave(requestedServerId: Int?): ShortcutResult<SaveServerData> =
+        when (val result = getServers()) {
             is ShortcutResult.Success -> ShortcutResult.Success(
                 SaveServerData(
-                    defaultServerId = servers.data.defaultServerId,
-                    resolvedServerId = resolveServerIdForSave(serverId, servers.data),
+                    defaultServerId = result.data.defaultServerId,
+                    resolvedServerId = resolveServerIdForSave(requestedServerId, result.data),
                 ),
             )
-
-            is ShortcutResult.Error -> ShortcutResult.Error(servers.error)
+            is ShortcutResult.Error -> result
         }
-    }
 
     suspend fun loadServerData(serverId: Int): ServerData = coroutineScope {
         val integrationRepository = serverManager.integrationRepository(serverId)
@@ -111,7 +105,7 @@ internal class ServersDataSource(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Timber.e(e, "Failed to load data for serverId=%s", server.id)
+                    Timber.e(e, "Failed to load data for serverId=%d", server.id)
                     null
                 }
             }
