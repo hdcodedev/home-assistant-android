@@ -146,7 +146,7 @@ internal class ShortcutsRepositoryImpl @Inject constructor(
     override suspend fun saveAppShortcut(
         index: Int?,
         shortcut: ShortcutDraft,
-    ): ShortcutResult<AppEditorData> {
+    ): ShortcutResult<Unit> {
         if (!isShortcutsSupported) {
             return ShortcutResult.Error(ShortcutError.ApiNotSupported)
         }

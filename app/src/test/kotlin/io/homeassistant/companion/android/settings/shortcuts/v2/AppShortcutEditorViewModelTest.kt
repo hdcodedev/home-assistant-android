@@ -71,13 +71,7 @@ class AppShortcutEditorViewModelTest {
         )
         coEvery {
             shortcutsRepository.saveAppShortcut(any(), any())
-        } returns ShortcutResult.Success(
-            AppEditorData(
-                index = 0,
-                draftSeed = buildDraft(id = appShortcutId(0), serverId = server.id),
-                mode = EditorMode.EDIT,
-            ),
-        )
+        } returns ShortcutResult.Success(Unit)
         every { shortcutsRepository.deleteAppShortcut(any()) } returns ShortcutResult.Success(Unit)
     }
 

@@ -81,7 +81,7 @@ internal class AppShortcutsDataSource(
         index: Int?,
         shortcut: ShortcutDraft,
         defaultServerId: Int,
-    ): ShortcutResult<AppEditorData> {
+    ): ShortcutResult<Unit> {
         val existingShortcuts = load(defaultServerId).shortcuts
         val resolvedIndex = when (val resolved = resolveIndex(index, existingShortcuts)) {
             is ShortcutResult.Success -> resolved.data
@@ -117,7 +117,7 @@ internal class AppShortcutsDataSource(
         index: Int,
         shortcut: ShortcutDraft,
         existingShortcuts: Map<Int, ShortcutDraft>,
-    ): ShortcutResult<AppEditorData> {
+    ): ShortcutResult<Unit> {
         val expectedId = AppShortcutId.build(index)
         val existingShortcut = existingShortcuts[index]
         if (existingShortcut != null && shortcut.id != expectedId) {
@@ -128,15 +128,15 @@ internal class AppShortcutsDataSource(
             val normalized = shortcut.copy(id = expectedId)
             val shortcutInfo = shortcutFactory.createShortcutInfo(normalized)
             val added = ShortcutManagerCompat.addDynamicShortcuts(app, listOf(shortcutInfo))
-            check(added) { "addDynamicShortcuts returned false" }
+            if (!added) {
+                Timber.w("Failed to add dynamic shortcut id=%s", expectedId)
+                return ShortcutResult.Error(
+                    ShortcutError.Unknown,
+                    IllegalStateException("addDynamicShortcuts returned false"),
+                )
+            }
 
-            ShortcutResult.Success(
-                AppEditorData(
-                    index = index,
-                    draftSeed = normalized,
-                    mode = EditorMode.EDIT,
-                ),
-            )
+            ShortcutResult.Success(Unit)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

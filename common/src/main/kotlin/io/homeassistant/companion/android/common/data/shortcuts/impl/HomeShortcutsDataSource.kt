@@ -52,12 +52,24 @@ internal class HomeShortcutsDataSource(
             if (exists) {
                 Timber.d("Updating home shortcut: ${normalized.id}")
                 val updated = ShortcutManagerCompat.updateShortcuts(app, listOf(shortcutInfo))
-                check(updated) { "updateShortcuts returned false" }
+                if (!updated) {
+                    Timber.w("Failed to update home shortcut id=%s", normalized.id)
+                    return ShortcutResult.Error(
+                        ShortcutError.Unknown,
+                        IllegalStateException("updateShortcuts returned false"),
+                    )
+                }
                 ShortcutResult.Success(Unit)
             } else {
                 Timber.d("Requesting pin for shortcut: ${normalized.id}")
                 val requested = ShortcutManagerCompat.requestPinShortcut(app, shortcutInfo, null)
-                check(requested) { "requestPinShortcut returned false" }
+                if (!requested) {
+                    Timber.w("Failed to request pin shortcut id=%s", normalized.id)
+                    return ShortcutResult.Error(
+                        ShortcutError.Unknown,
+                        IllegalStateException("requestPinShortcut returned false"),
+                    )
+                }
                 ShortcutResult.Success(Unit)
             }
         } catch (e: CancellationException) {

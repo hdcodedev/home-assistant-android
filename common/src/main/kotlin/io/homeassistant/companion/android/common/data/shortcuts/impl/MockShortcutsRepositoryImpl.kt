@@ -373,7 +373,7 @@ internal class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepo
     override suspend fun saveAppShortcut(
         index: Int?,
         shortcut: ShortcutDraft,
-    ): ShortcutResult<AppEditorData> {
+    ): ShortcutResult<Unit> {
         val resolvedIndex = if (index != null) {
             if (index !in 0 until MOCK_MAX_APP_SHORTCUTS) {
                 return ShortcutResult.Error(ShortcutError.InvalidIndex)
@@ -393,13 +393,7 @@ internal class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepo
             serverId = normalizeServerId(shortcut.serverId),
         )
         appShortcuts[resolvedIndex] = normalized
-        return ShortcutResult.Success(
-            AppEditorData(
-                index = resolvedIndex,
-                draftSeed = normalized,
-                mode = EditorMode.EDIT,
-            ),
-        )
+        return ShortcutResult.Success(Unit)
     }
 
     override fun deleteAppShortcut(index: Int): ShortcutResult<Unit> {
