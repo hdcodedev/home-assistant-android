@@ -393,7 +393,7 @@
         errorLine2="      ~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/io/homeassistant/companion/android/launch/LaunchActivity.kt"
-            line="44"
+            line="42"
             column="7"/>
     </issue>
 
@@ -1341,7 +1341,7 @@
         errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/io/homeassistant/companion/android/settings/assist/AssistSettingsScreen.kt"
-            line="337"
+            line="375"
             column="22"/>
     </issue>
 
@@ -1655,12 +1655,12 @@
 
     <issue
         id="ComposeUnstableCollections"
-        message="The Compose Compiler cannot infer the stability of a parameter if a List&lt;AppShortcutItem> is used in it, even if the item type is stable.&#xA;You should use Kotlinx Immutable Collections instead: `items: ImmutableList&lt;AppShortcutItem>` or create an `@Immutable` wrapper for this class: `@Immutable data class ItemsList(val items: List&lt;AppShortcutItem>)`&#xA;See https://slackhq.github.io/compose-lints/rules/#avoid-using-unstable-collections for more information."
-        errorLine1="    items: List&lt;AppShortcutItem>,"
-        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~">
+        message="The Compose Compiler cannot infer the stability of a parameter if a List&lt;AppShortcutSummary> is used in it, even if the item type is stable.&#xA;You should use Kotlinx Immutable Collections instead: `items: ImmutableList&lt;AppShortcutSummary>` or create an `@Immutable` wrapper for this class: `@Immutable data class ItemsList(val items: List&lt;AppShortcutSummary>)`&#xA;See https://slackhq.github.io/compose-lints/rules/#avoid-using-unstable-collections for more information."
+        errorLine1="    items: List&lt;AppShortcutSummary>,"
+        errorLine2="           ~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/io/homeassistant/companion/android/settings/shortcuts/v2/views/screens/ShortcutsListScreen.kt"
-            line="208"
+            line="210"
             column="12"/>
     </issue>
 
