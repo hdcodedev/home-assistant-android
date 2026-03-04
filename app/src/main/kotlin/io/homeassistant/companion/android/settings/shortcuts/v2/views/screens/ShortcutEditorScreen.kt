@@ -43,7 +43,7 @@ internal fun ShortcutEditorScreen(
     modifier: Modifier = Modifier,
     onRetry: (() -> Unit),
 ) {
-    if (state.screen.isLoading) {
+    if (state.isLoading) {
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center,
@@ -53,35 +53,31 @@ internal fun ShortcutEditorScreen(
         return
     }
 
-    val noServers = state.screen.servers.isEmpty()
-    val notSupported = state.screen.error == ShortcutError.ApiNotSupported
-    val homeShortcutsNotSupported = state.screen.error == ShortcutError.HomeShortcutNotSupported
-    when (val editor = state.editor) {
-        is ShortcutEditorUiState.LoadingEditorState -> {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                HALoading()
-            }
-        }
-
+    val editor = state.editor ?: return
+    val noServers = state.content.servers.isEmpty()
+    val notSupported = state.content.error == ShortcutError.ApiNotSupported
+    val homeShortcutsNotSupported = state.content.error == ShortcutError.HomeShortcutNotSupported
+    when (editor) {
         is ShortcutEditorUiState.AppEditorState -> {
             when {
                 notSupported -> NotSupportedStateContent()
                 noServers -> EmptyStateNoServers()
-                state.screen.error == ShortcutError.SlotsFull -> EmptyStateContentSlots()
-                state.screen.error != null -> ErrorStateContent(onRetry = onRetry)
+                state.content.error == ShortcutError.SlotsFull -> EmptyStateContentSlots()
+                state.content.error != null -> ErrorStateContent(onRetry = onRetry)
                 else -> ShortcutEditorContent(
-                    screenState = state.screen,
-                    draftSeed = editor.draftSeed,
+                    initialDraft = editor.initialDraft,
                     dispatch = dispatch,
+                    onDelete = when (editor) {
+                        is ShortcutEditorUiState.AppEditState ->
+                            { { dispatch(ShortcutEditAction.DeleteAppShortcut(editor.appIndex)) } }
+                        is ShortcutEditorUiState.AppCreateState -> null
+                    },
                     modifier = modifier,
                 ) { draft, onDraftChange, onIconClick, onSubmit, onDelete ->
                     AppShortcutEditor(
                         draft = draft,
                         state = editor,
-                        screen = state.screen,
+                        screen = state.content,
                         onDraftChange = onDraftChange,
                         onIconClick = onIconClick,
                         onSubmit = onSubmit,
@@ -96,18 +92,22 @@ internal fun ShortcutEditorScreen(
                 notSupported -> NotSupportedStateContent()
                 homeShortcutsNotSupported -> HomeShortcutsNotSupportedStateContent()
                 noServers -> EmptyStateNoServers()
-                state.screen.error != null -> ErrorStateContent(onRetry = onRetry)
+                state.content.error != null -> ErrorStateContent(onRetry = onRetry)
                 else -> {
                     ShortcutEditorContent(
-                        screenState = state.screen,
-                        draftSeed = editor.draftSeed,
+                        initialDraft = editor.initialDraft,
                         dispatch = dispatch,
+                        onDelete = when (editor) {
+                            is ShortcutEditorUiState.HomeEditState ->
+                                { { dispatch(ShortcutEditAction.DeleteHomeShortcut(editor.shortcutId)) } }
+                            is ShortcutEditorUiState.HomeCreateState -> null
+                        },
                         modifier = modifier,
                     ) { draft, onDraftChange, onIconClick, onSubmit, onDelete ->
                         HomeShortcutEditor(
                             draft = draft,
                             state = editor,
-                            screen = state.screen,
+                            screen = state.content,
                             onDraftChange = onDraftChange,
                             onIconClick = onIconClick,
                             onSubmit = onSubmit,
@@ -122,16 +122,16 @@ internal fun ShortcutEditorScreen(
 
 @Composable
 private fun ShortcutEditorContent(
-    screenState: ShortcutEditorScreenState,
-    draftSeed: ShortcutDraft,
+    initialDraft: ShortcutDraft,
     dispatch: (ShortcutEditAction) -> Unit,
     modifier: Modifier = Modifier,
+    onDelete: (() -> Unit)? = null,
     editor: @Composable (
         draft: ShortcutDraft,
         onDraftChange: (ShortcutDraft) -> Unit,
         onIconClick: () -> Unit,
         onSubmit: () -> Unit,
-        onDelete: () -> Unit,
+        onDelete: (() -> Unit)?,
     ) -> Unit,
 ) {
     Column(
@@ -142,11 +142,11 @@ private fun ShortcutEditorContent(
         verticalArrangement = Arrangement.spacedBy(HADimens.SPACE4),
     ) {
         var draft by rememberSaveable(
-            draftSeed.id,
-            draftSeed.serverId,
+            initialDraft.id,
+            initialDraft.serverId,
             stateSaver = ShortcutDraftSaver,
         ) {
-            mutableStateOf(draftSeed)
+            mutableStateOf(initialDraft)
         }
         var showIconDialog by rememberSaveable { mutableStateOf(false) }
         val updateDraft: (ShortcutDraft) -> Unit = { updated ->
@@ -167,7 +167,7 @@ private fun ShortcutEditorContent(
             updateDraft,
             { showIconDialog = true },
             { dispatch(ShortcutEditAction.Submit(draft)) },
-            { dispatch(ShortcutEditAction.Delete) },
+            onDelete,
         )
     }
 }
@@ -178,7 +178,7 @@ private fun ShortcutEditorScreenAppPreview() {
     HAThemeForPreview {
         ShortcutEditorScreen(
             state = ShortcutEditorUiState(
-                screen = ShortcutPreviewData.buildScreenState(
+                content = ShortcutPreviewData.buildScreenState(
                     servers = ShortcutPreviewData.previewServers,
                 ),
                 editor = ShortcutPreviewData.buildAppEditorState(),
@@ -195,7 +195,7 @@ private fun ShortcutEditorScreenHomePreview() {
     HAThemeForPreview {
         ShortcutEditorScreen(
             state = ShortcutEditorUiState(
-                screen = ShortcutPreviewData.buildScreenState(
+                content = ShortcutPreviewData.buildScreenState(
                     servers = ShortcutPreviewData.previewServers,
                 ),
                 editor = ShortcutPreviewData.buildHomeEditorState(),

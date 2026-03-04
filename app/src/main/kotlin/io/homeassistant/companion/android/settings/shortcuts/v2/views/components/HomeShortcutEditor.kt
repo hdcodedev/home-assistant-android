@@ -33,7 +33,7 @@ internal fun HomeShortcutEditor(
     onDraftChange: (ShortcutDraft) -> Unit,
     onIconClick: () -> Unit,
     onSubmit: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (() -> Unit)?,
 ) {
     val canSubmit by remember(draft, screen.servers) {
         derivedStateOf {

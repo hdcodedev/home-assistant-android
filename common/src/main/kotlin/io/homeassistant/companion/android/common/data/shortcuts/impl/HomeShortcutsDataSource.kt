@@ -5,8 +5,7 @@ import android.os.Build
 import androidx.core.content.pm.ShortcutManagerCompat
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutFactory
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
-import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
-import io.homeassistant.companion.android.common.data.shortcuts.entities.HomeEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutMode
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
@@ -79,7 +78,7 @@ internal class HomeShortcutsDataSource(
         }
     }
 
-    fun loadEditor(shortcutId: String, defaultServerId: Int): ShortcutResult<HomeEditorData> {
+    fun loadEditor(shortcutId: String, defaultServerId: Int): ShortcutResult<Pair<ShortcutDraft, ShortcutMode>> {
         val requestedId = shortcutId.trim()
         if (requestedId.isEmpty()) {
             return ShortcutResult.Error(ShortcutError.InvalidInput)
@@ -89,10 +88,13 @@ internal class HomeShortcutsDataSource(
         val draft = homeShortcut ?: ShortcutDraft.empty(requestedId).copy(serverId = defaultServerId)
 
         return ShortcutResult.Success(
-            HomeEditorData(
-                draftSeed = draft,
-                mode = if (homeShortcut != null) EditorMode.EDIT else EditorMode.CREATE,
-            ),
+            draft to if (homeShortcut != null) ShortcutMode.EDIT else ShortcutMode.CREATE,
+        )
+    }
+
+    fun loadCreateEditor(defaultServerId: Int): ShortcutResult<Pair<ShortcutDraft, ShortcutMode>> {
+        return ShortcutResult.Success(
+            ShortcutDraft.empty().copy(serverId = defaultServerId) to ShortcutMode.CREATE,
         )
     }
 

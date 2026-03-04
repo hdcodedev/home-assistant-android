@@ -4,8 +4,7 @@ import android.content.Context
 import androidx.core.content.pm.ShortcutManagerCompat
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutFactory
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
-import io.homeassistant.companion.android.common.data.shortcuts.entities.AppEditorData
-import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutMode
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
@@ -95,7 +94,7 @@ internal class AppShortcutsDataSource(
         )
     }
 
-    fun loadEditor(index: Int, defaultServerId: Int): ShortcutResult<AppEditorData> {
+    fun loadEditor(index: Int, defaultServerId: Int): ShortcutResult<Pair<ShortcutDraft, ShortcutMode>> {
         if (index !in 0 until maxShortcuts) {
             return ShortcutResult.Error(ShortcutError.InvalidIndex)
         }
@@ -105,11 +104,15 @@ internal class AppShortcutsDataSource(
         val draft = existingDraft ?: ShortcutDraft.empty().copy(serverId = defaultServerId)
 
         return ShortcutResult.Success(
-            AppEditorData(
-                index = index,
-                draftSeed = draft,
-                mode = if (existingDraft != null) EditorMode.EDIT else EditorMode.CREATE,
-            ),
+            draft to if (existingDraft != null) ShortcutMode.EDIT else ShortcutMode.CREATE,
+        )
+    }
+
+    fun loadCreateEditor(defaultServerId: Int): ShortcutResult<Pair<ShortcutDraft, ShortcutMode>> {
+        val shortcuts = load(defaultServerId).shortcuts
+        firstEmptyIndex(shortcuts) ?: return ShortcutResult.Error(ShortcutError.SlotsFull)
+        return ShortcutResult.Success(
+            ShortcutDraft.empty().copy(serverId = defaultServerId) to ShortcutMode.CREATE,
         )
     }
 
@@ -167,10 +170,14 @@ internal class AppShortcutsDataSource(
             }
         }
 
-        val firstEmpty = (0 until maxShortcuts).firstOrNull { candidate ->
-            !existingShortcuts.containsKey(candidate)
-        } ?: return ShortcutResult.Error(ShortcutError.SlotsFull)
+        val firstEmpty = firstEmptyIndex(existingShortcuts) ?: return ShortcutResult.Error(ShortcutError.SlotsFull)
 
         return ShortcutResult.Success(firstEmpty)
+    }
+
+    private fun firstEmptyIndex(existingShortcuts: Map<Int, ShortcutDraft>): Int? {
+        return (0 until maxShortcuts).firstOrNull { candidate ->
+            !existingShortcuts.containsKey(candidate)
+        }
     }
 }

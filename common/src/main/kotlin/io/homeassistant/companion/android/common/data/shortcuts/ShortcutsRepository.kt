@@ -1,20 +1,21 @@
 package io.homeassistant.companion.android.common.data.shortcuts
 
-import io.homeassistant.companion.android.common.data.shortcuts.entities.AppEditorData
-import io.homeassistant.companion.android.common.data.shortcuts.entities.HomeEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutEditorData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutsListData
 
 interface ShortcutsRepository {
-    suspend fun loadShortcutsList(): ShortcutResult<ShortcutsListData>
-    suspend fun loadEditorData(): ShortcutResult<ShortcutEditorData>
+    suspend fun loadShortcuts(): ShortcutResult<ShortcutsListData>
 
-    suspend fun loadAppEditor(index: Int): ShortcutResult<AppEditorData>
-    suspend fun loadHomeEditor(shortcutId: String): ShortcutResult<HomeEditorData>
-    
-    suspend fun saveAppShortcut(index: Int?, shortcut: ShortcutDraft): ShortcutResult<Unit>
+    suspend fun draftAppShortcutEditor(): ShortcutResult<ShortcutData>
+    suspend fun draftHomeShortcutEditor(): ShortcutResult<ShortcutData>
+
+    suspend fun loadAppShortcut(index: Int): ShortcutResult<ShortcutData>
+    suspend fun loadHomeShortcut(shortcutId: String): ShortcutResult<ShortcutData>
+
+    suspend fun createAppShortcut(shortcut: ShortcutDraft): ShortcutResult<Unit>
+    suspend fun updateAppShortcut(index: Int, shortcut: ShortcutDraft): ShortcutResult<Unit>
     suspend fun upsertHomeShortcut(shortcut: ShortcutDraft): ShortcutResult<Unit>
 
     fun deleteAppShortcut(index: Int): ShortcutResult<Unit>

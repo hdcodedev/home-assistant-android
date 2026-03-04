@@ -59,7 +59,7 @@ internal class ManageShortcutsViewModel @Inject constructor(private val shortcut
                 }
             }
 
-            val listData = when (val result = shortcutsRepository.loadShortcutsList()) {
+            val listData = when (val result = shortcutsRepository.loadShortcuts()) {
                 is ShortcutResult.Success -> result.data
                 is ShortcutResult.Error -> {
                     _uiState.update {

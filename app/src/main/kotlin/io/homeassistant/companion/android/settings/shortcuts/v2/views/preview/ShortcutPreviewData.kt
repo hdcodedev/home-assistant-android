@@ -2,7 +2,6 @@ package io.homeassistant.companion.android.settings.shortcuts.v2.views.preview
 
 import io.homeassistant.companion.android.common.data.integration.Entity
 import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
-import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
@@ -34,24 +33,31 @@ internal object ShortcutPreviewData {
 
     fun buildAppEditorState(
         selectedIndex: Int = 0,
-        draftSeed: ShortcutDraft = buildDraft(id = appDraftSeedId(selectedIndex)),
+        initialDraft: ShortcutDraft = buildDraft(id = appDraftSeedId(selectedIndex)),
         isEditing: Boolean = true,
     ): ShortcutEditorUiState.AppEditorState {
-        return ShortcutEditorUiState.AppEditorState(
-            mode = if (isEditing) EditorMode.EDIT else EditorMode.CREATE,
-            draftSeed = draftSeed,
-            appIndex = selectedIndex,
-        )
+        return if (isEditing) {
+            ShortcutEditorUiState.AppEditState(
+                initialDraft = initialDraft,
+                appIndex = selectedIndex,
+            )
+        } else {
+            ShortcutEditorUiState.AppCreateState(initialDraft = initialDraft)
+        }
     }
 
     fun buildHomeEditorState(
         homeDraft: ShortcutDraft = buildHomeDraft(),
         isEditing: Boolean = true,
     ): ShortcutEditorUiState.HomeEditorState {
-        return ShortcutEditorUiState.HomeEditorState(
-            mode = if (isEditing) EditorMode.EDIT else EditorMode.CREATE,
-            draftSeed = homeDraft,
-        )
+        return if (isEditing) {
+            ShortcutEditorUiState.HomeEditState(
+                initialDraft = homeDraft,
+                shortcutId = homeDraft.id,
+            )
+        } else {
+            ShortcutEditorUiState.HomeCreateState(initialDraft = homeDraft)
+        }
     }
 
     fun buildScreenState(

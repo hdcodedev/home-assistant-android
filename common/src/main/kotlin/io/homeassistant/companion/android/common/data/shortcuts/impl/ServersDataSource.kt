@@ -31,12 +31,6 @@ internal class ServersDataSource(
     private fun resolveServerIdForSave(requestedServerId: Int?, serversData: ServersData): Int =
         serversData.servers.firstOrNull { it.id == requestedServerId }?.id ?: serversData.defaultServerId
 
-    suspend fun getDefaultServerId(): ShortcutResult<Int> =
-        when (val result = getServers()) {
-            is ShortcutResult.Success -> ShortcutResult.Success(result.data.defaultServerId)
-            is ShortcutResult.Error -> result
-        }
-
     suspend fun resolveForSave(requestedServerId: Int?): ShortcutResult<SaveServerData> =
         when (val result = getServers()) {
             is ShortcutResult.Success -> ShortcutResult.Success(

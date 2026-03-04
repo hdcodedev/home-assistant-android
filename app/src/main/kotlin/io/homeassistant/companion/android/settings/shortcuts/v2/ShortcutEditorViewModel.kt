@@ -4,9 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsRepository
-import io.homeassistant.companion.android.common.data.shortcuts.entities.AppEditorData
-import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
-import io.homeassistant.companion.android.common.data.shortcuts.entities.HomeEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
@@ -25,14 +23,10 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class ShortcutEditorViewModel @Inject constructor(
-    private val shortcutsRepository: ShortcutsRepository,
+    private val repository: ShortcutsRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(
-        ShortcutEditorUiState(
-            editor = ShortcutEditorUiState.LoadingEditorState,
-        ),
-    )
+    private val _uiState = MutableStateFlow(ShortcutEditorUiState())
 
     val uiState: StateFlow<ShortcutEditorUiState> = _uiState.asStateFlow()
 
@@ -40,137 +34,110 @@ class ShortcutEditorViewModel @Inject constructor(
 
     val closeEvents = _closeEvents.asSharedFlow()
 
-    init {
-        loadScreenData()
-    }
-
+    // Action entry point.
     fun dispatch(action: ShortcutEditAction) {
         when (action) {
             is ShortcutEditAction.Submit -> submitShortcut(action.draft)
-            is ShortcutEditAction.Delete -> deleteShortcut()
+            is ShortcutEditAction.DeleteAppShortcut ->
+                launchCloseMutation { repository.deleteAppShortcut(action.appIndex) }
+            is ShortcutEditAction.DeleteHomeShortcut ->
+                launchCloseMutation { repository.deleteHomeShortcut(action.shortcutId) }
         }
     }
 
-    fun openCreateAppShortcut() {
-        updateEditor { INITIAL_APP_EDITOR_STATE }
-    }
+    // Editor opening flows.
+    fun draftAppShortcutEditor() = openEditor(
+        initial = ShortcutEditorUiState.AppCreateState(ShortcutDraft.empty()),
+        request = repository::draftAppShortcutEditor,
+        mapEditor = { data ->
+            ShortcutEditorUiState.AppCreateState(data.draftSeed)
+        },
+    )
 
-    fun openCreateHomeShortcut() {
-        updateEditor { INITIAL_HOME_EDITOR_STATE }
-    }
+    fun draftHomeShortcutEditor() = openEditor(
+        initial = ShortcutEditorUiState.HomeCreateState(ShortcutDraft.empty()),
+        request = repository::draftHomeShortcutEditor,
+        mapEditor = { data ->
+            ShortcutEditorUiState.HomeCreateState(data.draftSeed)
+        },
+    )
 
-    fun openEditAppShortcut(index: Int) {
-        loadMappedEditorState(
-            request = { shortcutsRepository.loadAppEditor(index) },
-            mapper = { editorData -> editorData.toEditorState() },
-        )
-    }
+    fun openEditAppShortcut(index: Int) = openEditor(
+        initial = ShortcutEditorUiState.AppEditState(
+            initialDraft = ShortcutDraft.empty(),
+            appIndex = index,
+        ),
+        request = { repository.loadAppShortcut(index) },
+        mapEditor = { data ->
+            ShortcutEditorUiState.AppEditState(
+                initialDraft = data.draftSeed,
+                appIndex = index,
+            )
+        },
+    )
 
-    fun openEditHomeShortcut(shortcutId: String) {
-        loadMappedEditorState(
-            request = { shortcutsRepository.loadHomeEditor(shortcutId) },
-            mapper = { editorData -> editorData.toEditorState() },
-        )
-    }
+    fun openEditHomeShortcut(shortcutId: String) = openEditor(
+        initial = ShortcutEditorUiState.HomeEditState(
+            initialDraft = ShortcutDraft.empty(shortcutId),
+            shortcutId = shortcutId,
+        ),
+        request = { repository.loadHomeShortcut(shortcutId) },
+        mapEditor = { data ->
+            ShortcutEditorUiState.HomeEditState(
+                initialDraft = data.draftSeed,
+                shortcutId = shortcutId,
+            )
+        },
+    )
 
+    // Create and update flows
     private fun submitShortcut(draft: ShortcutDraft) {
-        when (val editor = uiState.value.editor) {
-            is ShortcutEditorUiState.LoadingEditorState -> return
-            is ShortcutEditorUiState.AppEditorState -> {
-                launchCloseMutation {
-                    shortcutsRepository.saveAppShortcut(
-                        editor.appIndex.takeIf { editor.isEditing },
-                        draft,
-                    )
-                }
-            }
-
-            is ShortcutEditorUiState.HomeEditorState -> {
-                launchCloseMutation { shortcutsRepository.upsertHomeShortcut(draft) }
-            }
+        val editor = uiState.value.editor ?: return
+        when (editor) {
+            is ShortcutEditorUiState.AppCreateState ->
+                launchCloseMutation { repository.createAppShortcut(draft) }
+            is ShortcutEditorUiState.AppEditState ->
+                launchCloseMutation { repository.updateAppShortcut(editor.appIndex, draft) }
+            is ShortcutEditorUiState.HomeEditorState ->
+                launchCloseMutation { repository.upsertHomeShortcut(draft) }
         }
     }
 
-    private fun deleteShortcut() {
-        when (val editor = uiState.value.editor) {
-            is ShortcutEditorUiState.LoadingEditorState -> return
-            is ShortcutEditorUiState.AppEditorState -> {
-                val index = editor.appIndex?.takeIf { editor.isEditing } ?: return
-                launchCloseMutation { shortcutsRepository.deleteAppShortcut(index) }
-            }
-
-            is ShortcutEditorUiState.HomeEditorState -> {
-                if (!editor.isEditing) return
-                launchCloseMutation { shortcutsRepository.deleteHomeShortcut(editor.draftSeed.id) }
-            }
+    // Shared mutation helpers.
+    private fun openEditor(
+        initial: ShortcutEditorUiState.EditorState,
+        request: suspend () -> ShortcutResult<ShortcutData>,
+        mapEditor: (ShortcutData) -> ShortcutEditorUiState.EditorState,
+    ) {
+        _uiState.update { state ->
+            state.copy(
+                content = state.content.copy(isLoading = true, error = null),
+                editor = initial,
+            )
         }
-    }
-
-    private fun <T> launchCloseMutation(request: suspend () -> ShortcutResult<T>) {
-        launchMutation(
-            request = request,
-            onSuccess = { _closeEvents.emit(Unit) },
-        )
-    }
-
-    private fun loadScreenData() {
         viewModelScope.launch {
-            val screenState = when (val result = shortcutsRepository.loadEditorData()) {
-                is ShortcutResult.Success -> result.data.toUi()
-                is ShortcutResult.Error -> ShortcutEditorScreenState(isLoading = false, error = result.error)
-            }
-            updateScreen { screenState }
-        }
-    }
-
-    private fun loadEditorState(request: suspend () -> ShortcutResult<ShortcutEditorUiState.EditorState>) {
-        viewModelScope.launch {
-            updateScreen { it.copy(isLoading = true, error = null) }
             when (val result = request()) {
                 is ShortcutResult.Success -> {
-                    updateEditor { result.data }
-                    updateScreen { it.copy(isLoading = false) }
+                    val data = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            content = data.servers.toUi().copy(
+                                isSaving = state.content.isSaving,
+                                error = null,
+                            ),
+                            editor = mapEditor(data),
+                        )
+                    }
                 }
 
-                is ShortcutResult.Error -> {
+                is ShortcutResult.Error ->
                     updateScreen { it.copy(isLoading = false, error = result.error) }
-                }
             }
         }
     }
 
-    private fun <T> loadMappedEditorState(
-        request: suspend () -> ShortcutResult<T>,
-        mapper: (T) -> ShortcutEditorUiState.EditorState,
-    ) {
-        loadEditorState {
-            when (val result = request()) {
-                is ShortcutResult.Success -> ShortcutResult.Success(mapper(result.data))
-                is ShortcutResult.Error -> result
-            }
-        }
-    }
 
-    private fun <T> launchMutation(
-        request: suspend () -> ShortcutResult<T>,
-        onSuccess: suspend (T) -> Unit,
-    ) {
-        viewModelScope.launch {
-            setSaving(true)
-            when (val result = request()) {
-                is ShortcutResult.Success -> {
-                    setSaving(false)
-                    onSuccess(result.data)
-                }
-
-                is ShortcutResult.Error -> {
-                    setSaving(false)
-                    setScreenError(result.error)
-                }
-            }
-        }
-    }
-
+    // UI state update helpers.
     private fun setScreenError(error: ShortcutError?) {
         updateScreen { state ->
             if (state.error == error) state else state.copy(error = error)
@@ -183,40 +150,31 @@ class ShortcutEditorViewModel @Inject constructor(
 
     private fun updateScreen(updater: (ShortcutEditorScreenState) -> ShortcutEditorScreenState) {
         _uiState.update { state ->
-            state.copy(screen = updater(state.screen))
+            state.copy(content = updater(state.content))
         }
     }
 
-    private fun updateEditor(updater: (ShortcutEditorUiState.EditorState) -> ShortcutEditorUiState.EditorState) {
-        _uiState.update { state ->
-            state.copy(editor = updater(state.editor), screen = state.screen.copy(error = null))
+    private fun <T> launchCloseMutation(request: suspend () -> ShortcutResult<T>) {
+        launchMutation(
+            request = request,
+            onSuccess = { _closeEvents.emit(Unit) },
+        )
+    }
+
+    private fun <T> launchMutation(
+        request: suspend () -> ShortcutResult<T>,
+        onSuccess: suspend (T) -> Unit,
+    ) {
+        viewModelScope.launch {
+            setSaving(true)
+            try {
+                when (val result = request()) {
+                    is ShortcutResult.Success -> onSuccess(result.data)
+                    is ShortcutResult.Error -> setScreenError(result.error)
+                }
+            } finally {
+                setSaving(false)
+            }
         }
-    }
-
-    private fun AppEditorData.toEditorState(): ShortcutEditorUiState.AppEditorState {
-        return ShortcutEditorUiState.AppEditorState(
-            mode = mode,
-            draftSeed = draftSeed,
-            appIndex = index,
-        )
-    }
-
-    private fun HomeEditorData.toEditorState(): ShortcutEditorUiState.HomeEditorState {
-        return ShortcutEditorUiState.HomeEditorState(
-            mode = mode,
-            draftSeed = draftSeed,
-        )
-    }
-
-    private companion object {
-        val INITIAL_APP_EDITOR_STATE = ShortcutEditorUiState.AppEditorState(
-            mode = EditorMode.CREATE,
-            draftSeed = ShortcutDraft.empty(),
-        )
-
-        val INITIAL_HOME_EDITOR_STATE = ShortcutEditorUiState.HomeEditorState(
-            mode = EditorMode.CREATE,
-            draftSeed = ShortcutDraft.empty(),
-        )
     }
 }

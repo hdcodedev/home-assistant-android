@@ -56,7 +56,7 @@ class ManageShortcutsViewModelTest {
     }
 
     private fun stubList(data: ShortcutsListData) {
-        coEvery { shortcutsRepository.loadShortcutsList() } returns ShortcutResult.Success(data)
+        coEvery { shortcutsRepository.loadShortcuts() } returns ShortcutResult.Success(data)
     }
 
     private fun TestScope.createVm(): ManageShortcutsViewModel {
@@ -126,7 +126,7 @@ class ManageShortcutsViewModelTest {
 
     @Test
     fun `Given load error when init then error state shown`() = runTest {
-        coEvery { shortcutsRepository.loadShortcutsList() } returns ShortcutResult.Error(
+        coEvery { shortcutsRepository.loadShortcuts() } returns ShortcutResult.Error(
             ShortcutError.NoServers,
         )
 

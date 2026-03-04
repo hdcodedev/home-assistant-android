@@ -7,16 +7,14 @@ import io.homeassistant.companion.android.common.data.servers.ServerManager
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutFactory
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsRepository
-import io.homeassistant.companion.android.common.data.shortcuts.entities.AppEditorData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
-import io.homeassistant.companion.android.common.data.shortcuts.entities.HomeEditorData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutsListData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerData
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerEditorItem
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutServerItem
 import io.homeassistant.companion.android.common.data.shortcuts.entities.toSummary
 import io.homeassistant.companion.android.database.IconDialogCompat
 import javax.inject.Inject
@@ -56,7 +54,12 @@ internal class ShortcutsRepositoryImpl @Inject constructor(
         ServersDataSource(serverManager)
     }
 
-    override suspend fun loadShortcutsList(): ShortcutResult<ShortcutsListData> {
+    private data class EditorContext(
+        val defaultServerId: Int,
+        val servers: List<ShortcutServerItem>,
+    )
+
+    override suspend fun loadShortcuts(): ShortcutResult<ShortcutsListData> {
         if (!isShortcutsSupported) {
             return ShortcutResult.Error(ShortcutError.ApiNotSupported)
         }
@@ -92,43 +95,57 @@ internal class ShortcutsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun loadEditorData(): ShortcutResult<ShortcutEditorData> {
+    override suspend fun draftAppShortcutEditor(): ShortcutResult<ShortcutData> {
         if (!isShortcutsSupported) {
             return ShortcutResult.Error(ShortcutError.ApiNotSupported)
         }
 
-        val servers = when (val result = serversDataSource.getServers()) {
+        val context = when (val result = loadEditorContext()) {
+            is ShortcutResult.Success -> result.data
+            is ShortcutResult.Error -> return result
+        }
+
+        val editor = when (val result = appShortcutsDataSource.loadCreateEditor(context.defaultServerId)) {
             is ShortcutResult.Success -> result.data
             is ShortcutResult.Error -> return ShortcutResult.Error(result.error)
         }
-
-        val dataById = serversDataSource.loadEditorDataByServerId(servers.servers)
+        val (draftSeed, mode) = editor
 
         return ShortcutResult.Success(
-            ShortcutEditorData(
-                items = servers.servers.map { server ->
-                    ServerEditorItem(
-                        server = server,
-                        data = dataById[server.id] ?: ServerData(),
-                    )
-                },
+            ShortcutData(
+                servers = context.servers,
+                draftSeed = draftSeed,
+                mode = mode,
             ),
         )
     }
 
-    override suspend fun loadAppEditor(index: Int): ShortcutResult<AppEditorData> {
+    override suspend fun loadAppShortcut(index: Int): ShortcutResult<ShortcutData> {
         if (!isShortcutsSupported) {
             return ShortcutResult.Error(ShortcutError.ApiNotSupported)
         }
 
-        val defaultServerId = when (val result = serversDataSource.getDefaultServerId()) {
+        val context = when (val result = loadEditorContext()) {
+            is ShortcutResult.Success -> result.data
+            is ShortcutResult.Error -> return result
+        }
+
+        val editor = when (val result = appShortcutsDataSource.loadEditor(index, context.defaultServerId)) {
             is ShortcutResult.Success -> result.data
             is ShortcutResult.Error -> return ShortcutResult.Error(result.error)
         }
-        return appShortcutsDataSource.loadEditor(index, defaultServerId)
+        val (draftSeed, mode) = editor
+
+        return ShortcutResult.Success(
+            ShortcutData(
+                servers = context.servers,
+                draftSeed = draftSeed,
+                mode = mode,
+            ),
+        )
     }
 
-    override suspend fun loadHomeEditor(shortcutId: String): ShortcutResult<HomeEditorData> {
+    override suspend fun draftHomeShortcutEditor(): ShortcutResult<ShortcutData> {
         if (!isShortcutsSupported) {
             return ShortcutResult.Error(ShortcutError.ApiNotSupported)
         }
@@ -136,14 +153,63 @@ internal class ShortcutsRepositoryImpl @Inject constructor(
             return ShortcutResult.Error(ShortcutError.HomeShortcutNotSupported)
         }
 
-        val defaultServerId = when (val result = serversDataSource.getDefaultServerId()) {
+        val context = when (val result = loadEditorContext()) {
+            is ShortcutResult.Success -> result.data
+            is ShortcutResult.Error -> return result
+        }
+
+        val editor = when (val result = homeShortcutsDataSource.loadCreateEditor(context.defaultServerId)) {
             is ShortcutResult.Success -> result.data
             is ShortcutResult.Error -> return ShortcutResult.Error(result.error)
         }
-        return homeShortcutsDataSource.loadEditor(shortcutId, defaultServerId)
+        val (draftSeed, mode) = editor
+
+        return ShortcutResult.Success(
+            ShortcutData(
+                servers = context.servers,
+                draftSeed = draftSeed,
+                mode = mode,
+            ),
+        )
     }
 
-    override suspend fun saveAppShortcut(
+    override suspend fun loadHomeShortcut(shortcutId: String): ShortcutResult<ShortcutData> {
+        if (!isShortcutsSupported) {
+            return ShortcutResult.Error(ShortcutError.ApiNotSupported)
+        }
+        if (!homeShortcutsDataSource.canPinShortcuts) {
+            return ShortcutResult.Error(ShortcutError.HomeShortcutNotSupported)
+        }
+
+        val context = when (val result = loadEditorContext()) {
+            is ShortcutResult.Success -> result.data
+            is ShortcutResult.Error -> return result
+        }
+
+        val editor = when (val result = homeShortcutsDataSource.loadEditor(shortcutId, context.defaultServerId)) {
+            is ShortcutResult.Success -> result.data
+            is ShortcutResult.Error -> return ShortcutResult.Error(result.error)
+        }
+        val (draftSeed, mode) = editor
+
+        return ShortcutResult.Success(
+            ShortcutData(
+                servers = context.servers,
+                draftSeed = draftSeed,
+                mode = mode,
+            ),
+        )
+    }
+
+    override suspend fun createAppShortcut(shortcut: ShortcutDraft): ShortcutResult<Unit> {
+        return saveAppShortcut(index = null, shortcut = shortcut)
+    }
+
+    override suspend fun updateAppShortcut(index: Int, shortcut: ShortcutDraft): ShortcutResult<Unit> {
+        return saveAppShortcut(index = index, shortcut = shortcut)
+    }
+
+    private suspend fun saveAppShortcut(
         index: Int?,
         shortcut: ShortcutDraft,
     ): ShortcutResult<Unit> {
@@ -205,5 +271,26 @@ internal class ShortcutsRepositoryImpl @Inject constructor(
         }
 
         return homeShortcutsDataSource.delete(shortcutId)
+    }
+
+    private suspend fun loadEditorContext(): ShortcutResult<EditorContext> {
+        val servers = when (val result = serversDataSource.getServers()) {
+            is ShortcutResult.Success -> result.data
+            is ShortcutResult.Error -> return ShortcutResult.Error(result.error)
+        }
+
+        val dataById = serversDataSource.loadEditorDataByServerId(servers.servers)
+        val editorServers = servers.servers.map { server ->
+            ShortcutServerItem(
+                server = server,
+                data = dataById[server.id] ?: ServerData(),
+            )
+        }
+        return ShortcutResult.Success(
+            EditorContext(
+                defaultServerId = servers.defaultServerId,
+                servers = editorServers,
+            ),
+        )
     }
 }

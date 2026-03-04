@@ -1,17 +1,16 @@
 package io.homeassistant.companion.android.settings.shortcuts.v2
 
-import app.cash.turbine.testIn
 import app.cash.turbine.turbineScope
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsRepository
-import io.homeassistant.companion.android.common.data.shortcuts.entities.AppEditorData
-import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerData
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerEditorItem
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutServerItem
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutEditorData
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutMode
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
+import io.homeassistant.companion.android.common.data.shortcuts.entities.empty
 import io.homeassistant.companion.android.database.server.Server
 import io.homeassistant.companion.android.database.server.ServerConnectionInfo
 import io.homeassistant.companion.android.database.server.ServerSessionInfo
@@ -52,39 +51,37 @@ class AppShortcutEditorViewModelTest {
 
     @BeforeEach
     fun setup() {
-        coEvery { shortcutsRepository.loadEditorData() } returns ShortcutResult.Success(
-            ShortcutEditorData(
-                items = listOf(
-                    ServerEditorItem(
-                        server = server,
-                        data = ServerData(),
-                    ),
-                ),
-            ),
-        )
-        coEvery { shortcutsRepository.loadAppEditor(0) } returns ShortcutResult.Success(
-            AppEditorData(
-                index = 0,
+        coEvery { shortcutsRepository.loadAppShortcut(0) } returns ShortcutResult.Success(
+            ShortcutData(
+                servers = buildEditorServers(),
                 draftSeed = buildDraft(id = appShortcutId(0), serverId = server.id),
-                mode = EditorMode.EDIT,
+                mode = ShortcutMode.EDIT,
             ),
         )
-        coEvery {
-            shortcutsRepository.saveAppShortcut(any(), any())
-        } returns ShortcutResult.Success(Unit)
+        coEvery { shortcutsRepository.draftAppShortcutEditor() } returns ShortcutResult.Success(
+            ShortcutData(
+                servers = buildEditorServers(),
+                draftSeed = ShortcutDraft.empty().copy(serverId = server.id),
+                mode = ShortcutMode.CREATE,
+            ),
+        )
+        coEvery { shortcutsRepository.createAppShortcut(any()) } returns ShortcutResult.Success(Unit)
+        coEvery { shortcutsRepository.updateAppShortcut(any(), any()) } returns ShortcutResult.Success(Unit)
         every { shortcutsRepository.deleteAppShortcut(any()) } returns ShortcutResult.Success(Unit)
     }
 
     @Test
-    fun `Given no servers when init then screen error is set`() = runTest {
-        coEvery { shortcutsRepository.loadEditorData() } returns ShortcutResult.Error(
+    fun `Given no servers when openCreateAppShortcut then screen error is set`() = runTest {
+        coEvery { shortcutsRepository.draftAppShortcutEditor() } returns ShortcutResult.Error(
             ShortcutError.NoServers,
         )
 
         val viewModel = createVm()
+        viewModel.draftAppShortcutEditor()
+        advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.screen.isLoading)
-        assertEquals(ShortcutError.NoServers, viewModel.uiState.value.screen.error)
+        assertFalse(viewModel.uiState.value.content.isLoading)
+        assertEquals(ShortcutError.NoServers, viewModel.uiState.value.content.error)
     }
 
     @Test
@@ -95,15 +92,14 @@ class AppShortcutEditorViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        val editor = state.editor as ShortcutEditorUiState.AppEditorState
-        assertFalse(state.screen.isLoading)
-        assertEquals(EditorMode.EDIT, editor.mode)
+        val editor = state.editor as ShortcutEditorUiState.AppEditState
+        assertFalse(state.content.isLoading)
         assertEquals(0, editor.appIndex)
     }
 
     @Test
     fun `Given app editor load error when openEditAppShortcut then screen error is set`() = runTest {
-        coEvery { shortcutsRepository.loadAppEditor(0) } returns ShortcutResult.Error(
+        coEvery { shortcutsRepository.loadAppShortcut(0) } returns ShortcutResult.Error(
             ShortcutError.SlotsFull,
         )
         val viewModel = createVm()
@@ -111,25 +107,24 @@ class AppShortcutEditorViewModelTest {
         viewModel.openEditAppShortcut(0)
         advanceUntilIdle()
 
-        assertEquals(ShortcutError.SlotsFull, viewModel.uiState.value.screen.error)
+        assertEquals(ShortcutError.SlotsFull, viewModel.uiState.value.content.error)
     }
 
     @Test
     fun `Given error when openCreateAppShortcut then error is cleared`() = runTest {
-        coEvery { shortcutsRepository.loadAppEditor(0) } returns ShortcutResult.Error(
+        coEvery { shortcutsRepository.loadAppShortcut(0) } returns ShortcutResult.Error(
             ShortcutError.SlotsFull,
         )
         val viewModel = createVm()
         viewModel.openEditAppShortcut(0)
         advanceUntilIdle()
-        assertEquals(ShortcutError.SlotsFull, viewModel.uiState.value.screen.error)
+        assertEquals(ShortcutError.SlotsFull, viewModel.uiState.value.content.error)
 
-        viewModel.openCreateAppShortcut()
+        viewModel.draftAppShortcutEditor()
 
-        val editor = viewModel.uiState.value.editor as ShortcutEditorUiState.AppEditorState
-        assertEquals(null, viewModel.uiState.value.screen.error)
-        assertEquals(EditorMode.CREATE, editor.mode)
-        assertEquals(null, editor.appIndex)
+        val editor = viewModel.uiState.value.editor as ShortcutEditorUiState.AppCreateState
+        assertEquals(null, viewModel.uiState.value.content.error)
+        assertEquals(ShortcutDraft.empty().copy(serverId = server.id), editor.initialDraft)
     }
 
     @ParameterizedTest
@@ -147,6 +142,8 @@ class AppShortcutEditorViewModelTest {
         val viewModel = createVm()
         if (expectedIsEditing) {
             viewModel.openEditAppShortcut(index)
+        } else {
+            viewModel.draftAppShortcutEditor()
             advanceUntilIdle()
         }
 
@@ -155,17 +152,15 @@ class AppShortcutEditorViewModelTest {
         }
 
         if (expectedIsEditing) {
-            coVerify { shortcutsRepository.saveAppShortcut(index, draft) }
+            coVerify { shortcutsRepository.updateAppShortcut(index, draft) }
         } else {
-            coVerify { shortcutsRepository.saveAppShortcut(null, draft) }
+            coVerify { shortcutsRepository.createAppShortcut(draft) }
         }
     }
 
     @Test
     fun `Given app shortcut submit error when submit then screen error set`() = runTest {
-        coEvery {
-            shortcutsRepository.saveAppShortcut(any(), any())
-        } returns ShortcutResult.Error(
+        coEvery { shortcutsRepository.updateAppShortcut(any(), any()) } returns ShortcutResult.Error(
             ShortcutError.SlotsFull,
         )
         val viewModel = createVm()
@@ -182,7 +177,7 @@ class AppShortcutEditorViewModelTest {
         )
         advanceUntilIdle()
 
-        assertEquals(ShortcutError.SlotsFull, viewModel.uiState.value.screen.error)
+        assertEquals(ShortcutError.SlotsFull, viewModel.uiState.value.content.error)
     }
 
     @Test
@@ -192,7 +187,7 @@ class AppShortcutEditorViewModelTest {
         advanceUntilIdle()
 
         assertCloseEmitted(viewModel) {
-            viewModel.dispatch(ShortcutEditAction.Delete)
+            viewModel.dispatch(ShortcutEditAction.DeleteAppShortcut(0))
         }
 
         verify { shortcutsRepository.deleteAppShortcut(0) }
@@ -225,6 +220,15 @@ class AppShortcutEditorViewModelTest {
             label = id,
             description = "Description for $id",
             destination = ShortcutDestination.Lovelace("/lovelace/$id"),
+        )
+    }
+
+    private fun buildEditorServers(): List<ShortcutServerItem> {
+        return listOf(
+            ShortcutServerItem(
+                server = server,
+                data = ServerData(),
+            ),
         )
     }
 }

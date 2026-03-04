@@ -162,14 +162,14 @@ private fun CreateAppShortcutRouteScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.openCreateAppShortcut()
+        viewModel.draftAppShortcutEditor()
     }
 
     ShortcutEditorRouteScreenContent(
         uiState = uiState,
         closeEvents = viewModel.closeEvents,
         dispatch = viewModel::dispatch,
-        onRetry = viewModel::openCreateAppShortcut,
+        onRetry = viewModel::draftAppShortcutEditor,
         onNavigateBack = onNavigateBack,
     )
 }
@@ -182,14 +182,14 @@ private fun CreateHomeShortcutRouteScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.openCreateHomeShortcut()
+        viewModel.draftHomeShortcutEditor()
     }
 
     ShortcutEditorRouteScreenContent(
         uiState = uiState,
         closeEvents = viewModel.closeEvents,
         dispatch = viewModel::dispatch,
-        onRetry = viewModel::openCreateHomeShortcut,
+        onRetry = viewModel::draftHomeShortcutEditor,
         onNavigateBack = onNavigateBack,
     )
 }

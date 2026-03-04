@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import com.android.tools.screenshot.PreviewTest
 import io.homeassistant.companion.android.common.compose.theme.HAThemeForPreview
 import io.homeassistant.companion.android.common.data.integration.Entity
-import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
@@ -102,13 +101,12 @@ class ShortcutEditorScreenScreenshotTest {
         HAThemeForPreview {
             ShortcutEditorScreen(
                 state = ShortcutEditorUiState(
-                    screen = ShortcutEditorScreenState(
+                    content = ShortcutEditorScreenState(
                         isLoading = true,
                         servers = servers,
                     ),
-                    editor = ShortcutEditorUiState.AppEditorState(
-                        mode = EditorMode.CREATE,
-                        draftSeed = draft,
+                    editor = ShortcutEditorUiState.AppCreateState(
+                        initialDraft = draft,
                     ),
                 ),
                 dispatch = { _: ShortcutEditAction -> },
@@ -125,13 +123,12 @@ class ShortcutEditorScreenScreenshotTest {
         HAThemeForPreview {
             ShortcutEditorScreen(
                 state = ShortcutEditorUiState(
-                    screen = ShortcutEditorScreenState(
+                    content = ShortcutEditorScreenState(
                         isLoading = false,
                         servers = emptyList(),
                     ),
-                    editor = ShortcutEditorUiState.AppEditorState(
-                        mode = EditorMode.CREATE,
-                        draftSeed = draft,
+                    editor = ShortcutEditorUiState.AppCreateState(
+                        initialDraft = draft,
                     ),
                 ),
                 dispatch = { _: ShortcutEditAction -> },
@@ -149,14 +146,13 @@ class ShortcutEditorScreenScreenshotTest {
         HAThemeForPreview {
             ShortcutEditorScreen(
                 state = ShortcutEditorUiState(
-                    screen = ShortcutEditorScreenState(
+                    content = ShortcutEditorScreenState(
                         isLoading = false,
                         servers = servers,
                         error = ShortcutError.SlotsFull,
                     ),
-                    editor = ShortcutEditorUiState.AppEditorState(
-                        mode = EditorMode.CREATE,
-                        draftSeed = draft,
+                    editor = ShortcutEditorUiState.AppCreateState(
+                        initialDraft = draft,
                     ),
                 ),
                 dispatch = { _: ShortcutEditAction -> },
@@ -174,13 +170,12 @@ class ShortcutEditorScreenScreenshotTest {
         HAThemeForPreview {
             ShortcutEditorScreen(
                 state = ShortcutEditorUiState(
-                    screen = ShortcutEditorScreenState(
+                    content = ShortcutEditorScreenState(
                         isLoading = false,
                         servers = servers,
                     ),
-                    editor = ShortcutEditorUiState.AppEditorState(
-                        mode = EditorMode.CREATE,
-                        draftSeed = draft,
+                    editor = ShortcutEditorUiState.AppCreateState(
+                        initialDraft = draft,
                     ),
                 ),
                 dispatch = { _: ShortcutEditAction -> },
@@ -202,7 +197,7 @@ class ShortcutEditorScreenScreenshotTest {
         HAThemeForPreview {
             ShortcutEditorScreen(
                 state = ShortcutEditorUiState(
-                    screen = ShortcutEditorScreenState(
+                    content = ShortcutEditorScreenState(
                         isLoading = false,
                         servers = servers,
                         entities = entities,
@@ -210,9 +205,8 @@ class ShortcutEditorScreenScreenshotTest {
                         deviceRegistry = deviceRegistry,
                         areaRegistry = areaRegistry,
                     ),
-                    editor = ShortcutEditorUiState.AppEditorState(
-                        mode = EditorMode.EDIT,
-                        draftSeed = draft,
+                    editor = ShortcutEditorUiState.AppEditState(
+                        initialDraft = draft,
                         appIndex = 0,
                     ),
                 ),
@@ -231,13 +225,12 @@ class ShortcutEditorScreenScreenshotTest {
         HAThemeForPreview {
             ShortcutEditorScreen(
                 state = ShortcutEditorUiState(
-                    screen = ShortcutEditorScreenState(
+                    content = ShortcutEditorScreenState(
                         isLoading = false,
                         servers = servers,
                     ),
-                    editor = ShortcutEditorUiState.HomeEditorState(
-                        mode = EditorMode.CREATE,
-                        draftSeed = draft,
+                    editor = ShortcutEditorUiState.HomeCreateState(
+                        initialDraft = draft,
                     ),
                 ),
                 dispatch = { _: ShortcutEditAction -> },
@@ -255,13 +248,13 @@ class ShortcutEditorScreenScreenshotTest {
         HAThemeForPreview {
             ShortcutEditorScreen(
                 state = ShortcutEditorUiState(
-                    screen = ShortcutEditorScreenState(
+                    content = ShortcutEditorScreenState(
                         isLoading = false,
                         servers = servers,
                     ),
-                    editor = ShortcutEditorUiState.HomeEditorState(
-                        mode = EditorMode.EDIT,
-                        draftSeed = draft,
+                    editor = ShortcutEditorUiState.HomeEditState(
+                        initialDraft = draft,
+                        shortcutId = draft.id,
                     ),
                 ),
                 dispatch = { _: ShortcutEditAction -> },

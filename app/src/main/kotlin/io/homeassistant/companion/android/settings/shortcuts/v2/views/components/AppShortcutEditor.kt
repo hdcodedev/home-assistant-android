@@ -33,7 +33,7 @@ internal fun AppShortcutEditor(
     onDraftChange: (ShortcutDraft) -> Unit,
     onIconClick: () -> Unit,
     onSubmit: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (() -> Unit)?,
 ) {
     val canSubmit by remember(draft, screen.servers) {
         derivedStateOf {
@@ -47,10 +47,11 @@ internal fun AppShortcutEditor(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (state.isEditing && state.appIndex != null) {
-                    stringResource(R.string.shortcut_n, state.appIndex + 1)
-                } else {
-                    stringResource(R.string.shortcut_v2_add_app_shortcut_title)
+                text = when (state) {
+                    is ShortcutEditorUiState.AppEditState ->
+                        stringResource(R.string.shortcut_n, state.appIndex + 1)
+                    is ShortcutEditorUiState.AppCreateState ->
+                        stringResource(R.string.shortcut_v2_add_app_shortcut_title)
                 },
                 style = HATextStyle.HeadlineMedium,
                 color = LocalHAColorScheme.current.colorFillPrimaryLoudResting,

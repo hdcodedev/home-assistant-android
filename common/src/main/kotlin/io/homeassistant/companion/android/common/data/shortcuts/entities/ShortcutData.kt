@@ -8,6 +8,19 @@ import io.homeassistant.companion.android.common.data.websocket.impl.entities.En
 import io.homeassistant.companion.android.database.server.Server
 
 @Immutable
+data class ShortcutData(
+    val servers: List<ShortcutServerItem>,
+    val draftSeed: ShortcutDraft,
+    val mode: ShortcutMode,
+)
+
+@Immutable
+data class ShortcutServerItem(
+    val server: Server,
+    val data: ServerData,
+)
+
+@Immutable
 data class ServerData(
     val entities: List<Entity> = emptyList(),
     val entityRegistry: List<EntityRegistryResponse> = emptyList(),
@@ -15,13 +28,7 @@ data class ServerData(
     val areaRegistry: List<AreaRegistryResponse> = emptyList(),
 )
 
-@Immutable
-data class ServerEditorItem(
-    val server: Server,
-    val data: ServerData,
-)
-
-@Immutable
-data class ShortcutEditorData(
-    val items: List<ServerEditorItem>,
-)
+enum class ShortcutMode {
+    CREATE,
+    EDIT,
+}

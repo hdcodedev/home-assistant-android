@@ -2,18 +2,16 @@ package io.homeassistant.companion.android.common.data.shortcuts.impl
 
 import io.homeassistant.companion.android.common.data.integration.Entity
 import io.homeassistant.companion.android.common.data.shortcuts.ShortcutsRepository
-import io.homeassistant.companion.android.common.data.shortcuts.entities.AppEditorData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
-import io.homeassistant.companion.android.common.data.shortcuts.entities.EditorMode
-import io.homeassistant.companion.android.common.data.shortcuts.entities.HomeEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutMode
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutEditorData
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutData
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
 import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutsListData
-import io.homeassistant.companion.android.common.data.shortcuts.entities.ServerEditorItem
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutServerItem
 import io.homeassistant.companion.android.common.data.shortcuts.entities.empty
 import io.homeassistant.companion.android.common.data.shortcuts.entities.toSummary
 import io.homeassistant.companion.android.common.data.websocket.impl.entities.AreaRegistryResponse
@@ -313,7 +311,7 @@ internal class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepo
         ),
     )
 
-    override suspend fun loadShortcutsList(): ShortcutResult<ShortcutsListData> {
+    override suspend fun loadShortcuts(): ShortcutResult<ShortcutsListData> {
         return ShortcutResult.Success(
             ShortcutsListData(
                 maxAppShortcuts = MOCK_MAX_APP_SHORTCUTS,
@@ -325,52 +323,73 @@ internal class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepo
         )
     }
 
-    override suspend fun loadEditorData(): ShortcutResult<ShortcutEditorData> {
+    override suspend fun draftAppShortcutEditor(): ShortcutResult<ShortcutData> {
+        (0 until MOCK_MAX_APP_SHORTCUTS).firstOrNull { !appShortcuts.containsKey(it) }
+            ?: return ShortcutResult.Error(ShortcutError.SlotsFull)
+        val draftSeed = ShortcutDraft.empty().copy(serverId = defaultServerId)
         return ShortcutResult.Success(
-            ShortcutEditorData(
-                items = servers.map { server ->
-                    ServerEditorItem(
-                        server = server,
-                        data = serverDataById[server.id] ?: ServerData(),
-                    )
-                },
+            ShortcutData(
+                servers = buildEditorServers(),
+                draftSeed = draftSeed,
+                mode = ShortcutMode.CREATE,
             ),
         )
     }
 
-    override suspend fun loadAppEditor(index: Int): ShortcutResult<AppEditorData> {
+    override suspend fun loadAppShortcut(index: Int): ShortcutResult<ShortcutData> {
         if (index !in 0 until MOCK_MAX_APP_SHORTCUTS) {
             return ShortcutResult.Error(ShortcutError.InvalidIndex)
         }
-
         val existingDraft = appShortcuts[index]
-        val draft = existingDraft ?: ShortcutDraft.empty().copy(serverId = defaultServerId)
+        val draftSeed = existingDraft ?: ShortcutDraft.empty().copy(serverId = defaultServerId)
+        val mode = if (existingDraft == null) ShortcutMode.CREATE else ShortcutMode.EDIT
         return ShortcutResult.Success(
-            AppEditorData(
-                index = index,
-                draftSeed = draft,
-                mode = if (existingDraft == null) EditorMode.CREATE else EditorMode.EDIT,
+            ShortcutData(
+                servers = buildEditorServers(),
+                draftSeed = draftSeed,
+                mode = mode,
             ),
         )
     }
 
-    override suspend fun loadHomeEditor(shortcutId: String): ShortcutResult<HomeEditorData> {
+    override suspend fun draftHomeShortcutEditor(): ShortcutResult<ShortcutData> {
+        val draftSeed = ShortcutDraft.empty().copy(serverId = defaultServerId)
+        return ShortcutResult.Success(
+            ShortcutData(
+                servers = buildEditorServers(),
+                draftSeed = draftSeed,
+                mode = ShortcutMode.CREATE,
+            ),
+        )
+    }
+
+    override suspend fun loadHomeShortcut(shortcutId: String): ShortcutResult<ShortcutData> {
         val requestedId = shortcutId.trim()
         if (requestedId.isEmpty()) {
             return ShortcutResult.Error(ShortcutError.InvalidInput)
         }
 
         val existingDraft = homeShortcuts[requestedId]
-        val draft = existingDraft ?: ShortcutDraft.empty(requestedId).copy(serverId = defaultServerId)
+        val draftSeed = existingDraft ?: ShortcutDraft.empty(requestedId).copy(serverId = defaultServerId)
+        val mode = if (existingDraft == null) ShortcutMode.CREATE else ShortcutMode.EDIT
         return ShortcutResult.Success(
-            HomeEditorData(
-                draftSeed = draft,
-                mode = if (existingDraft == null) EditorMode.CREATE else EditorMode.EDIT,
+            ShortcutData(
+                servers = buildEditorServers(),
+                draftSeed = draftSeed,
+                mode = mode,
             ),
         )
     }
 
-    override suspend fun saveAppShortcut(
+    override suspend fun createAppShortcut(shortcut: ShortcutDraft): ShortcutResult<Unit> {
+        return saveAppShortcut(index = null, shortcut = shortcut)
+    }
+
+    override suspend fun updateAppShortcut(index: Int, shortcut: ShortcutDraft): ShortcutResult<Unit> {
+        return saveAppShortcut(index = index, shortcut = shortcut)
+    }
+
+    private suspend fun saveAppShortcut(
         index: Int?,
         shortcut: ShortcutDraft,
     ): ShortcutResult<Unit> {
@@ -447,5 +466,14 @@ internal class MockShortcutsRepositoryImpl @Inject constructor() : ShortcutsRepo
 
     private fun buildAppId(index: Int): String {
         return "${MOCK_APP_SHORTCUT_PREFIX}_${index + 1}"
+    }
+
+    private fun buildEditorServers(): List<ShortcutServerItem> {
+        return servers.map { server ->
+            ShortcutServerItem(
+                server = server,
+                data = serverDataById[server.id] ?: ServerData(),
+            )
+        }
     }
 }
