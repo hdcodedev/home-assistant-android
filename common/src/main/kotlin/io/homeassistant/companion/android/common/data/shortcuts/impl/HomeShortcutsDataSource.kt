@@ -1,0 +1,114 @@
+package io.homeassistant.companion.android.common.data.shortcuts.impl
+
+import android.content.Context
+import android.os.Build
+import androidx.core.content.pm.ShortcutManagerCompat
+import io.homeassistant.companion.android.common.data.shortcuts.ShortcutFactory
+import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutMode
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
+import io.homeassistant.companion.android.common.data.shortcuts.entities.empty
+import java.util.UUID
+import kotlinx.coroutines.CancellationException
+import timber.log.Timber
+
+private const val ASSIST_SHORTCUT_PREFIX = ".ha_assist_"
+private const val HOME_SHORTCUT_PREFIX = "pinned"
+
+internal class HomeShortcutsDataSource(
+    private val app: Context,
+    private val shortcutFactory: ShortcutFactory,
+    private val shortcutIntentCodec: ShortcutIntentCodec,
+    private val iconIdToName: Map<Int, String>,
+) {
+    val canPinShortcuts: Boolean by lazy {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            ShortcutManagerCompat.isRequestPinShortcutSupported(app)
+    }
+
+    fun load(defaultServerId: Int): List<ShortcutDraft> {
+        val homeShortcuts = ShortcutManagerCompat.getShortcuts(app, ShortcutManagerCompat.FLAG_MATCH_PINNED)
+            .filter { !it.id.startsWith(ASSIST_SHORTCUT_PREFIX) }
+
+        return homeShortcuts
+            .map { shortcutIntentCodec.toDraft(it, defaultServerId, iconIdToName) }
+            .reversed()
+    }
+
+    fun upsert(shortcut: ShortcutDraft, defaultServerId: Int): ShortcutResult<Unit> {
+        return try {
+            val normalized = if (shortcut.id.isBlank()) {
+                shortcut.copy(id = newHomeId())
+            } else {
+                shortcut
+            }
+            val shortcutInfo = shortcutFactory.createShortcutInfo(normalized)
+            val exists = load(defaultServerId).any { it.id == normalized.id }
+
+            if (exists) {
+                Timber.d("Updating home shortcut: ${normalized.id}")
+                val updated = ShortcutManagerCompat.updateShortcuts(app, listOf(shortcutInfo))
+                if (!updated) {
+                    Timber.w("Failed to update home shortcut id=%s", normalized.id)
+                    return ShortcutResult.Error(
+                        ShortcutError.Unknown,
+                        IllegalStateException("updateShortcuts returned false"),
+                    )
+                }
+                ShortcutResult.Success(Unit)
+            } else {
+                Timber.d("Requesting pin for shortcut: ${normalized.id}")
+                val requested = ShortcutManagerCompat.requestPinShortcut(app, shortcutInfo, null)
+                if (!requested) {
+                    Timber.w("Failed to request pin shortcut id=%s", normalized.id)
+                    return ShortcutResult.Error(
+                        ShortcutError.Unknown,
+                        IllegalStateException("requestPinShortcut returned false"),
+                    )
+                }
+                ShortcutResult.Success(Unit)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to upsert home shortcut")
+            ShortcutResult.Error(ShortcutError.Unknown, e)
+        }
+    }
+
+    fun loadEditor(shortcutId: String, defaultServerId: Int): ShortcutResult<Pair<ShortcutDraft, ShortcutMode>> {
+        val requestedId = shortcutId.trim()
+        if (requestedId.isEmpty()) {
+            return ShortcutResult.Error(ShortcutError.InvalidInput)
+        }
+
+        val homeShortcut = load(defaultServerId).firstOrNull { it.id == requestedId }
+        val draft = homeShortcut ?: ShortcutDraft.empty(requestedId).copy(serverId = defaultServerId)
+
+        return ShortcutResult.Success(
+            draft to if (homeShortcut != null) ShortcutMode.EDIT else ShortcutMode.CREATE,
+        )
+    }
+
+    fun loadCreateEditor(defaultServerId: Int): ShortcutResult<Pair<ShortcutDraft, ShortcutMode>> {
+        return ShortcutResult.Success(
+            ShortcutDraft.empty().copy(serverId = defaultServerId) to ShortcutMode.CREATE,
+        )
+    }
+
+    fun delete(shortcutId: String): ShortcutResult<Unit> {
+        return try {
+            ShortcutManagerCompat.disableShortcuts(app, listOf(shortcutId), null)
+            ShortcutResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to delete home shortcut id=%s", shortcutId)
+            ShortcutResult.Error(ShortcutError.Unknown, e)
+        }
+    }
+
+    private fun newHomeId(): String = "${HOME_SHORTCUT_PREFIX}_${UUID.randomUUID()}"
+}

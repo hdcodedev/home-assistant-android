@@ -1,0 +1,180 @@
+package io.homeassistant.companion.android.common.data.shortcuts.impl
+
+import android.content.Context
+import androidx.core.content.pm.ShortcutManagerCompat
+import io.homeassistant.companion.android.common.data.shortcuts.ShortcutFactory
+import io.homeassistant.companion.android.common.data.shortcuts.ShortcutIntentCodec
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutMode
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutResult
+import io.homeassistant.companion.android.common.data.shortcuts.entities.empty
+import kotlinx.coroutines.CancellationException
+import timber.log.Timber
+
+private const val DEFAULT_MAX_APP_SHORTCUTS = 5
+private const val APP_SHORTCUT_PREFIX = "shortcut"
+
+internal data class AppShortcutsData(val maxAppShortcuts: Int, val shortcuts: Map<Int, ShortcutDraft>) {
+    val orderedShortcuts: List<Map.Entry<Int, ShortcutDraft>> = shortcuts.entries.sortedBy { it.key }
+}
+
+private object AppShortcutId {
+    fun build(index: Int): String = "${APP_SHORTCUT_PREFIX}_${index + 1}"
+
+    fun parse(shortcutId: String): Int? {
+        if (!shortcutId.startsWith("${APP_SHORTCUT_PREFIX}_")) return null
+        return shortcutId.substringAfterLast("_", missingDelimiterValue = "")
+            .toIntOrNull()
+            ?.minus(1)
+            ?.takeIf { it >= 0 }
+    }
+}
+
+internal class AppShortcutsDataSource(
+    private val app: Context,
+    private val shortcutFactory: ShortcutFactory,
+    private val shortcutIntentCodec: ShortcutIntentCodec,
+    private val iconIdToName: Map<Int, String>,
+) {
+    val maxShortcuts: Int by lazy {
+        runCatching { ShortcutManagerCompat.getMaxShortcutCountPerActivity(app) }
+            .onFailure { Timber.w(it, "Failed to query max shortcut count, using fallback value") }
+            .getOrNull()
+            ?.takeIf { it > 0 }
+            ?: DEFAULT_MAX_APP_SHORTCUTS
+    }
+
+    fun load(defaultServerId: Int): AppShortcutsData {
+        val shortcuts = ShortcutManagerCompat.getShortcuts(
+            app,
+            ShortcutManagerCompat.FLAG_MATCH_DYNAMIC,
+        )
+
+        val shortcutsByIndex = buildMap {
+            for (item in shortcuts) {
+                val index = AppShortcutId.parse(item.id)
+
+                if (index == null) {
+                    Timber.w("Skipping app shortcut with unexpected id=%s", item.id)
+                    continue
+                }
+
+                if (index !in 0 until maxShortcuts) {
+                    Timber.w("Skipping app shortcut with out-of-range index=%d id=%s", index, item.id)
+                    continue
+                }
+
+                put(index, shortcutIntentCodec.toDraft(item, defaultServerId, iconIdToName))
+            }
+        }
+
+        return AppShortcutsData(
+            maxAppShortcuts = maxShortcuts,
+            shortcuts = shortcutsByIndex,
+        )
+    }
+
+    fun save(index: Int?, shortcut: ShortcutDraft, defaultServerId: Int): ShortcutResult<Unit> {
+        val existingShortcuts = load(defaultServerId).shortcuts
+        val resolvedIndex = when (val resolved = resolveIndex(index, existingShortcuts)) {
+            is ShortcutResult.Success -> resolved.data
+            is ShortcutResult.Error -> return ShortcutResult.Error(resolved.error)
+        }
+
+        return saveAtIndex(
+            index = resolvedIndex,
+            shortcut = shortcut,
+            existingShortcuts = existingShortcuts,
+        )
+    }
+
+    fun loadEditor(index: Int, defaultServerId: Int): ShortcutResult<Pair<ShortcutDraft, ShortcutMode>> {
+        if (index !in 0 until maxShortcuts) {
+            return ShortcutResult.Error(ShortcutError.InvalidIndex)
+        }
+
+        val shortcuts = load(defaultServerId).shortcuts
+        val existingDraft = shortcuts[index]
+        val draft = existingDraft ?: ShortcutDraft.empty().copy(serverId = defaultServerId)
+
+        return ShortcutResult.Success(
+            draft to if (existingDraft != null) ShortcutMode.EDIT else ShortcutMode.CREATE,
+        )
+    }
+
+    fun loadCreateEditor(defaultServerId: Int): ShortcutResult<Pair<ShortcutDraft, ShortcutMode>> {
+        val shortcuts = load(defaultServerId).shortcuts
+        firstEmptyIndex(shortcuts) ?: return ShortcutResult.Error(ShortcutError.SlotsFull)
+        return ShortcutResult.Success(
+            ShortcutDraft.empty().copy(serverId = defaultServerId) to ShortcutMode.CREATE,
+        )
+    }
+
+    private fun saveAtIndex(
+        index: Int,
+        shortcut: ShortcutDraft,
+        existingShortcuts: Map<Int, ShortcutDraft>,
+    ): ShortcutResult<Unit> {
+        val expectedId = AppShortcutId.build(index)
+        val existingShortcut = existingShortcuts[index]
+        if (existingShortcut != null && shortcut.id != expectedId) {
+            return ShortcutResult.Error(ShortcutError.SlotsFull)
+        }
+
+        return try {
+            val normalized = shortcut.copy(id = expectedId)
+            val shortcutInfo = shortcutFactory.createShortcutInfo(normalized)
+            val added = ShortcutManagerCompat.addDynamicShortcuts(app, listOf(shortcutInfo))
+            if (!added) {
+                Timber.w("Failed to add dynamic shortcut id=%s", expectedId)
+                return ShortcutResult.Error(
+                    ShortcutError.Unknown,
+                    IllegalStateException("addDynamicShortcuts returned false"),
+                )
+            }
+
+            ShortcutResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to save app shortcut at index=%d", index)
+            ShortcutResult.Error(ShortcutError.Unknown, e)
+        }
+    }
+
+    fun delete(index: Int): ShortcutResult<Unit> {
+        return try {
+            ShortcutManagerCompat.removeDynamicShortcuts(
+                app,
+                listOf(AppShortcutId.build(index)),
+            )
+            ShortcutResult.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to delete app shortcut at index=%d", index)
+            ShortcutResult.Error(ShortcutError.Unknown, e)
+        }
+    }
+
+    private fun resolveIndex(index: Int?, existingShortcuts: Map<Int, ShortcutDraft>): ShortcutResult<Int> {
+        if (index != null) {
+            return if (index in 0 until maxShortcuts) {
+                ShortcutResult.Success(index)
+            } else {
+                ShortcutResult.Error(ShortcutError.InvalidIndex)
+            }
+        }
+
+        val firstEmpty = firstEmptyIndex(existingShortcuts) ?: return ShortcutResult.Error(ShortcutError.SlotsFull)
+
+        return ShortcutResult.Success(firstEmpty)
+    }
+
+    private fun firstEmptyIndex(existingShortcuts: Map<Int, ShortcutDraft>): Int? {
+        return (0 until maxShortcuts).firstOrNull { candidate ->
+            !existingShortcuts.containsKey(candidate)
+        }
+    }
+}
