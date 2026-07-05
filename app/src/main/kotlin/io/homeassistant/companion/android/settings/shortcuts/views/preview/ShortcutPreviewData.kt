@@ -1,0 +1,236 @@
+package io.homeassistant.companion.android.settings.shortcuts.views.preview
+
+import io.homeassistant.companion.android.common.data.integration.Entity
+import io.homeassistant.companion.android.common.data.shortcuts.entities.AppShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDestination
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutDraft
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutError
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutSummary
+import io.homeassistant.companion.android.common.data.shortcuts.entities.ShortcutType
+import io.homeassistant.companion.android.common.data.websocket.impl.entities.AreaRegistryResponse
+import io.homeassistant.companion.android.common.data.websocket.impl.entities.DeviceRegistryResponse
+import io.homeassistant.companion.android.common.data.websocket.impl.entities.EntityRegistryResponse
+import io.homeassistant.companion.android.database.server.Server
+import io.homeassistant.companion.android.database.server.ServerConnectionInfo
+import io.homeassistant.companion.android.database.server.ServerSessionInfo
+import io.homeassistant.companion.android.database.server.ServerUserInfo
+import io.homeassistant.companion.android.settings.shortcuts.ShortcutEditorUiState
+import io.homeassistant.companion.android.settings.shortcuts.ShortcutsListState
+import io.homeassistant.companion.android.settings.shortcuts.views.screens.ShortcutEditorScreenState
+import java.time.LocalDateTime
+
+private const val PREVIEW_APP_SHORTCUT_PREFIX = "shortcut"
+private const val PREVIEW_APP_DRAFT_PREFIX = "app_draft"
+
+internal object ShortcutPreviewData {
+    private fun appShortcutId(index: Int): String {
+        return "${PREVIEW_APP_SHORTCUT_PREFIX}_${index + 1}"
+    }
+
+    private fun appDraftSeedId(index: Int): String {
+        return "${PREVIEW_APP_DRAFT_PREFIX}_${index + 1}"
+    }
+
+    fun buildAppEditorState(
+        selectedIndex: Int = 0,
+        initialDraft: ShortcutDraft = buildDraft(id = appDraftSeedId(selectedIndex)),
+        isEditing: Boolean = true,
+    ): ShortcutEditorUiState.AppEditorState {
+        return if (isEditing) {
+            ShortcutEditorUiState.AppEditState(
+                initialDraft = initialDraft,
+                appIndex = selectedIndex,
+            )
+        } else {
+            ShortcutEditorUiState.AppCreateState(initialDraft = initialDraft)
+        }
+    }
+
+    fun buildHomeEditorState(
+        homeDraft: ShortcutDraft = buildHomeDraft(),
+        isEditing: Boolean = true,
+    ): ShortcutEditorUiState.HomeEditorState {
+        return if (isEditing) {
+            ShortcutEditorUiState.HomeEditState(
+                initialDraft = homeDraft,
+                shortcutId = homeDraft.id,
+            )
+        } else {
+            ShortcutEditorUiState.HomeCreateState(initialDraft = homeDraft)
+        }
+    }
+
+    fun buildScreenState(
+        isLoading: Boolean = false,
+        isSaving: Boolean = false,
+        servers: List<Server> = previewServers,
+        entities: Map<Int, List<Entity>> = previewEntitiesByServer,
+        entityRegistry: Map<Int, List<EntityRegistryResponse>> = previewEntityRegistryByServer,
+        deviceRegistry: Map<Int, List<DeviceRegistryResponse>> = previewDeviceRegistryByServer,
+        areaRegistry: Map<Int, List<AreaRegistryResponse>> = previewAreaRegistryByServer,
+    ): ShortcutEditorScreenState {
+        return ShortcutEditorScreenState(
+            isLoading = isLoading,
+            isSaving = isSaving,
+            servers = servers,
+            entities = entities,
+            entityRegistry = entityRegistry,
+            deviceRegistry = deviceRegistry,
+            areaRegistry = areaRegistry,
+        )
+    }
+
+    fun buildDraft(
+        type: ShortcutType = ShortcutType.DASHBOARD,
+        id: String = appDraftSeedId(0),
+        serverId: Int = 1,
+    ): ShortcutDraft {
+        return ShortcutDraft(
+            id = id,
+            serverId = serverId,
+            selectedIconName = null,
+            label = if (type == ShortcutType.ENTITY) "Lights" else "Shortcut",
+            description = if (type == ShortcutType.ENTITY) "Toggle living room lights" else "Description",
+            destination = if (type == ShortcutType.ENTITY) {
+                ShortcutDestination.Entity("light.living_room")
+            } else {
+                ShortcutDestination.Dashboard("/lovelace/shortcut")
+            },
+        )
+    }
+
+    fun buildAppDrafts(count: Int, type: ShortcutType): List<ShortcutDraft> {
+        return List(count) { index ->
+            val number = index + 1
+            ShortcutDraft(
+                id = appShortcutId(index),
+                serverId = 1,
+                selectedIconName = null,
+                label = if (type == ShortcutType.ENTITY) "Lights" else "Shortcut $number",
+                description = if (type == ShortcutType.ENTITY) {
+                    "Toggle living room lights"
+                } else {
+                    "Description $number"
+                },
+                destination = if (type == ShortcutType.ENTITY) {
+                    ShortcutDestination.Entity("light.living_room")
+                } else {
+                    ShortcutDestination.Dashboard("/lovelace/shortcut$number")
+                },
+            )
+        }
+    }
+
+    fun buildAppSummaries(count: Int, type: ShortcutType): List<ShortcutSummary> {
+        return buildAppDrafts(count = count, type = type).map { draft ->
+            ShortcutSummary(
+                id = draft.id,
+                selectedIconName = draft.selectedIconName,
+                label = draft.label,
+            )
+        }
+    }
+
+    fun buildHomeDraft(): ShortcutDraft {
+        return ShortcutDraft(
+            id = "pinned_1",
+            serverId = 1,
+            selectedIconName = null,
+            label = "Home",
+            description = "Home shortcut",
+            destination = ShortcutDestination.Dashboard("/lovelace/home"),
+        )
+    }
+
+    fun buildHomeSummaries(): List<ShortcutSummary> {
+        return listOf(
+            ShortcutSummary(
+                id = "pinned_1",
+                selectedIconName = null,
+                label = "Home",
+            ),
+        )
+    }
+
+    fun buildListState(
+        isLoading: Boolean = false,
+        error: ShortcutError? = null,
+        maxAppShortcuts: Int = 5,
+        appSummaries: List<ShortcutSummary> = buildAppSummaries(
+            count = 2,
+            type = ShortcutType.DASHBOARD,
+        ),
+        homeSummaries: List<ShortcutSummary> = buildHomeSummaries(),
+        isHomeSupported: Boolean = true,
+    ): ShortcutsListState {
+        val appItems = appSummaries.mapIndexed { index, summary ->
+            AppShortcutSummary(index, summary)
+        }
+        val homeItems = if (isHomeSupported) homeSummaries else emptyList()
+        return ShortcutsListState(
+            isLoading = isLoading,
+            error = error,
+            homeShortcutError = if (isHomeSupported) null else ShortcutError.HomeShortcutNotSupported,
+            maxAppShortcuts = maxAppShortcuts,
+            appShortcutItems = appItems,
+            homeShortcutItems = homeItems,
+        )
+    }
+
+    val previewServers = listOf(
+        Server(
+            id = 1,
+            _name = "Home",
+            connection = ServerConnectionInfo(externalUrl = "https://home.example.com"),
+            session = ServerSessionInfo(),
+            user = ServerUserInfo(),
+        ),
+        Server(
+            id = 2,
+            _name = "Office",
+            connection = ServerConnectionInfo(externalUrl = "https://office.example.com"),
+            session = ServerSessionInfo(),
+            user = ServerUserInfo(),
+        ),
+    )
+
+    val previewEntitiesByServer = mapOf(
+        1 to listOf(
+            Entity(
+                entityId = "light.living_room",
+                state = "on",
+                attributes = mapOf("friendly_name" to "Living Room"),
+                lastChanged = LocalDateTime.now(),
+                lastUpdated = LocalDateTime.now(),
+            ),
+        ),
+    )
+
+    val previewEntityRegistryByServer = mapOf(
+        1 to listOf(
+            EntityRegistryResponse(
+                entityId = "light.living_room",
+                areaId = "living_room",
+                deviceId = "device_1",
+            ),
+        ),
+    )
+
+    val previewDeviceRegistryByServer = mapOf(
+        1 to listOf(
+            DeviceRegistryResponse(
+                id = "device_1",
+                name = "Ceiling Lights",
+            ),
+        ),
+    )
+
+    val previewAreaRegistryByServer = mapOf(
+        1 to listOf(
+            AreaRegistryResponse(
+                areaId = "living_room",
+                name = "Living Room",
+            ),
+        ),
+    )
+}
