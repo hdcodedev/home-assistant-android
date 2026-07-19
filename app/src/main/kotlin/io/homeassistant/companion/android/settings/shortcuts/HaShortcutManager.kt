@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
-import android.os.Build
 import android.util.NoSuchPropertyException
 import android.util.TypedValue
 import androidx.core.content.ContextCompat
@@ -25,14 +24,19 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.homeassistant.companion.android.R
 import io.homeassistant.companion.android.common.R as commonR
 import io.homeassistant.companion.android.common.data.servers.ServerManager
-import io.homeassistant.companion.android.common.util.SdkVersion
+import io.homeassistant.companion.android.common.util.MDI_PREFIX
 import io.homeassistant.companion.android.common.util.getIconByMdiName
 import io.homeassistant.companion.android.common.util.mdiName
 import io.homeassistant.companion.android.database.IconDialogCompat
 import io.homeassistant.companion.android.frontend.navigation.FrontendTarget
+import io.homeassistant.companion.android.frontend.navigation.FrontendTarget.Companion.toRawPath
 import io.homeassistant.companion.android.launch.link.HA_DEEP_LINK_SCHEME
 import io.homeassistant.companion.android.launch.link.LinkActivity
 import io.homeassistant.companion.android.launch.link.navigateDeepLinkUri
+import io.homeassistant.companion.android.settings.shortcuts.data.entities.Shortcut
+import io.homeassistant.companion.android.settings.shortcuts.data.entities.ShortcutDraft
+import io.homeassistant.companion.android.settings.shortcuts.data.entities.ShortcutIcon
+import io.homeassistant.companion.android.settings.shortcuts.data.entities.ShortcutListItem
 import io.homeassistant.companion.android.widgets.assist.AssistShortcutActivity
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -51,8 +55,8 @@ internal const val SHORTCUT_EXTRA_SERVER = "server"
  * This value cannot be changed, otherwise it's going to break shortcuts.
  */
 internal const val SHORTCUT_EXTRA_PATH = "path"
-private const val SHORTCUT_EXTRA_ICON_NAME = "iconName"
-private const val SHORTCUT_EXTRA_ICON_ID = "iconId"
+internal const val SHORTCUT_EXTRA_ICON_NAME = "iconName"
+internal const val SHORTCUT_EXTRA_ICON_ID = "iconId"
 
 /**
  * Manage Shortcuts.
@@ -111,6 +115,27 @@ internal class HaShortcutManager @Inject constructor(
     }
 
     /**
+     * Resolves the persisted MDI icon name stored on a shortcut intent via its `iconName`/`iconId`
+     * extras, or `null` if none is present. The modern `iconName` extra takes precedence over the
+     * legacy `iconId` extra so newer shortcuts are not overridden by stale values.
+     */
+    private fun ensureMdiPrefix(name: String): String = if (name.startsWith(MDI_PREFIX)) name else "$MDI_PREFIX$name"
+
+    private suspend fun resolveIconName(intent: Intent): String? {
+        val extras = intent.extras ?: return null
+        extras.getString(SHORTCUT_EXTRA_ICON_NAME)?.let {
+            return ensureMdiPrefix(it)
+        }
+        val iconId = extras.getInt(SHORTCUT_EXTRA_ICON_ID, 0).takeIf { it != 0 } ?: return null
+        return try {
+            "mdi:${iconDialogCompat.streamingIconLookup(iconId)}"
+        } catch (e: NoSuchPropertyException) {
+            Timber.w(e, "Unknown shortcut iconId=$iconId, falling back to default icon")
+            null
+        }
+    }
+
+    /**
      * Resolves the [IIcon] stored on a shortcut intent via its `iconName`/`iconId` extras, or `null`
      * if none is present.
      */
@@ -118,7 +143,7 @@ internal class HaShortcutManager @Inject constructor(
         val extras = intent.extras ?: return@withContext null
         return@withContext when {
             extras.containsKey(SHORTCUT_EXTRA_ICON_NAME) -> extras.getString(SHORTCUT_EXTRA_ICON_NAME)?.let {
-                CommunityMaterial.getIconByMdiName(it)
+                CommunityMaterial.getIconByMdiName(ensureMdiPrefix(it))
             }
 
             extras.containsKey(SHORTCUT_EXTRA_ICON_ID) -> {
@@ -145,7 +170,7 @@ internal class HaShortcutManager @Inject constructor(
      * skipped, so re-running does nothing. Safe to call on any API level (no-op below N_MR1).
      */
     suspend fun migrateLegacyShortcuts() {
-        if (!SdkVersion.isAtLeast(Build.VERSION_CODES.N_MR1)) return
+        if (!areShortcutsSupported()) return
 
         val legacyShortcuts = ShortcutManagerCompat.getShortcuts(
             context,
@@ -210,5 +235,68 @@ internal class HaShortcutManager @Inject constructor(
         iconDrawable.draw(canvas)
 
         return IconCompat.createWithAdaptiveBitmap(adaptiveBitmap)
+    }
+
+    /**
+     * Decodes a platform shortcut into the editable shortcut model.
+     *
+     * The destination is required for editing. Current shortcuts read it from the `path` extra, while
+     * v1 shortcuts may carry the raw destination in the intent action. `ACTION_VIEW` is ignored as a
+     * fallback because modern deep-link shortcuts use it as the Android action, not as a destination.
+     *
+     * @throws IllegalArgumentException when the shortcut does not contain a usable destination.
+     */
+    suspend fun decode(shortcut: ShortcutInfoCompat, defaultServerId: Int): Shortcut {
+        val intent = shortcut.intent
+        val iconName = resolveIconName(intent)
+        val rawPath = resolvePath(intent)
+        val destination = FrontendTarget.fromRawPath(rawPath).toShortcutDestination()
+
+        return Shortcut(
+            id = shortcut.id,
+            serverId = intent.getIntExtra(SHORTCUT_EXTRA_SERVER, defaultServerId),
+            icon = ShortcutIcon.fromIconName(iconName),
+            label = shortcut.shortLabel.toString(),
+            description = shortcut.longLabel?.toString().orEmpty(),
+            destination = destination,
+        )
+    }
+
+    /**
+     * Builds a [ShortcutInfoCompat] from the editable common draft model.
+     *
+     * This is the `:common` repository boundary used by shortcut creation and update flows. The
+     * stored destination stays in the same raw-path format as [buildShortcutInfo].
+     */
+    fun buildShortcutInfo(shortcutId: String, draft: ShortcutDraft): ShortcutInfoCompat {
+        return buildShortcutInfo(
+            shortcutId = shortcutId,
+            serverId = draft.serverId,
+            label = draft.label,
+            longLabel = draft.description,
+            path = draft.destination.toFrontendTarget().toRawPath().orEmpty(),
+            icon = (draft.icon as? ShortcutIcon.Mdi)?.name?.let(CommunityMaterial::getIconByMdiName),
+        )
+    }
+
+    /**
+     * Decodes the launcher-visible shortcut fields used by shortcut lists.
+     *
+     * List rows do not need a destination, so malformed or older shortcuts without a `path` extra can
+     * still be displayed and managed.
+     */
+    suspend fun decodeListItem(shortcut: ShortcutInfoCompat): ShortcutListItem {
+        val iconName = resolveIconName(shortcut.intent)
+        return ShortcutListItem(
+            id = shortcut.id,
+            label = shortcut.shortLabel.toString(),
+            icon = ShortcutIcon.fromIconName(iconName),
+        )
+    }
+
+    private fun resolvePath(intent: Intent): String {
+        val path = intent.getStringExtra(SHORTCUT_EXTRA_PATH)?.takeUnless(String::isBlank)
+            ?: intent.action?.takeUnless { it.isBlank() || it == Intent.ACTION_VIEW }
+        return path ?: throw IllegalArgumentException("Shortcut destination path is missing")
     }
 }

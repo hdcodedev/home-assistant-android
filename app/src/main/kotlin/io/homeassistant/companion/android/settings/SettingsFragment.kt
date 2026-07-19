@@ -52,6 +52,7 @@ import io.homeassistant.companion.android.settings.sensor.SensorSettingsFragment
 import io.homeassistant.companion.android.settings.sensor.SensorUpdateFrequencyFragment
 import io.homeassistant.companion.android.settings.server.ServerSettingsFragment
 import io.homeassistant.companion.android.settings.shortcuts.ManageShortcutsSettingsFragment
+import io.homeassistant.companion.android.settings.shortcuts.areShortcutsSupported
 import io.homeassistant.companion.android.settings.shortcuts.legacy.ManageShortcutsSettingsFragment as LegacyManageShortcutsSettingsFragment
 import io.homeassistant.companion.android.settings.vehicle.ManageAndroidAutoSettingsFragment
 import io.homeassistant.companion.android.settings.wear.SettingsWearActivity
@@ -212,7 +213,7 @@ class SettingsFragment(
         }
 
         if (!QuestUtil.isQuest) {
-            if (SdkVersion.isAtLeast(Build.VERSION_CODES.N_MR1)) {
+            if (areShortcutsSupported()) {
                 findPreference<PreferenceCategory>("shortcuts")?.let {
                     it.isVisible = true
                 }
@@ -226,6 +227,26 @@ class SettingsFragment(
                         addToBackStack(getString(commonR.string.shortcuts))
                     }
                     return@setOnPreferenceClickListener true
+                }
+
+                if (BuildConfig.DEBUG) {
+                    findPreference<PreferenceCategory>("shortcuts")?.let { category ->
+                        val toggle = SwitchPreference(requireContext()).apply {
+                            key = "debug_shortcuts_v2_toggle"
+                            isPersistent = false
+                            setDefaultValue(WIPFeature.USE_SHORTCUTS_V2)
+                            summary = "Active implementation shown when opening Shortcuts"
+                            isChecked = WIPFeature.USE_SHORTCUTS_V2
+                            title = shortcutImplementationLabel(WIPFeature.USE_SHORTCUTS_V2)
+                            setOnPreferenceChangeListener { _, newValue ->
+                                val enabled = newValue as Boolean
+                                WIPFeature.shortcutsV2Override = enabled
+                                title = shortcutImplementationLabel(enabled)
+                                true
+                            }
+                        }
+                        category.addPreference(toggle)
+                    }
                 }
             }
 
@@ -653,4 +674,7 @@ class SettingsFragment(
         presenter.onFinish()
         super.onDestroy()
     }
+
+    private fun shortcutImplementationLabel(v2Enabled: Boolean): String =
+        if (v2Enabled) "Shortcuts: V2 (debug)" else "Shortcuts: Legacy (debug)"
 }
